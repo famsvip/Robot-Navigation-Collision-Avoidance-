@@ -63,12 +63,12 @@ class controlBarrierFunction():
         self.grad_h_workspace = 0.0
 
 
-    def obstacle_calc(self, theta):
+    def static_obs_calc(self, theta):
         model = self.model
         data = self.data
 
-        distance_sensors = ["base_obs1",  "base_obs2", "base_obs3", "base_obs4", "base_obs5"]
-        normal_sensors = ["base_obs1_vec",  "base_obs2_vec", "base_obs3_vec", "base_obs4_vec", "base_obs5_vec"]
+        distance_sensors = ["base_obs1",  "base_obs2", "base_obs3", "base_obs4"]
+        normal_sensors = ["base_obs1_vec",  "base_obs2_vec", "base_obs3_vec", "base_obs4_vec"]
 
         distance_data = []
         for name in distance_sensors:
@@ -93,12 +93,35 @@ class controlBarrierFunction():
                     ])
         self.grad_h_obs = R_world_to_body@grad
 
-        # time derivative 
-        if sensor_index == 4:
-            obs_vel = R_world_to_body @ self.data.qvel[18:]
+        return self.h_obs, self.grad_h_obs
+    
+    def moving_obs_calc(self, theta):
+        model = self.model
+        data = self.data
+
+        distance = data.sensordata[model.sensor("base_obs5").adr]
+        normal_adr = model.sensor("base_obs5_vec").adr[0]
+
+        if distance > 0:
+            grad = -data.sensordata[normal_adr:normal_adr+3]
         else:
-            obs_vel = np.array([0.0, 0.0, 0.0])
+            grad = data.sensordata[normal_adr:normal_adr+3]
+        grad[2] = 0.0 # remove z component
+
+        self.h_obs = distance[0]
+
+        # planar version of rotation matrix (pure yaw)
+        R_world_to_body = np.array([
+                    [np.cos(theta), np.sin(theta), 0],
+                    [-np.sin(theta), np.cos(theta), 0],
+                    [0, 0, 1]
+                    ])
+        self.grad_h_obs = R_world_to_body@grad
+
+        # time derivative 
+        obs_vel = R_world_to_body @ self.data.qvel[18:]
         dh_dt = -self.grad_h_obs @ obs_vel
+        print("dh/dt:", dh_dt)
 
         return self.h_obs, self.grad_h_obs, dh_dt
 
@@ -137,33 +160,47 @@ class controlBarrierFunction():
 
         return self.h_workspace, self.grad_h_workspace
     
-    def composite_calc(self, theta):
-        h_obs, grad_h_obs, h_dot = self.obstacle_calc(theta)
-        h_work, grad_h_work = self.workspace_calc(0.5, 2, 0.5, theta)
+    def composite_calc(self, theta, mode):
+        '''mode 0 for static calculations, else for moving obstacle'''
+        if mode:
+            h_obs, grad_h_obs = self.static_obs_calc(theta)
+            dh_dt = 0
+            h_work, grad_h_work = self.workspace_calc(0.5, 2, 0.5, theta)
 
-        h_composite = h_obs + h_work
-        grad_h = grad_h_obs + grad_h_work
+            h_composite = h_obs + h_work
+            grad_h = grad_h_obs + grad_h_work
 
-        print("h obstacle:", h_obs)
-        print("h workspace:", h_work)
-        print("obstacle grad:", grad_h_obs)
-        print("workspace grad:", grad_h_work)
+            print("h static_obstacle:", h_obs)
+            print("h workspace:", h_work)
+            print("static obstacle grad:", grad_h_obs)
+            print("workspace grad:", grad_h_work)
+        else:
+            h_obs, grad_h_obs, dh_dt = self.moving_obs_calc(theta)
+            h_work, grad_h_work = self.workspace_calc(0.5, 2, 0.5, theta)
 
-        return np.array([h_composite]), grad_h, h_dot
+            h_composite = h_obs + h_work
+            grad_h = grad_h_obs + grad_h_work
+
+            print("h_moving_obstacle:", h_obs)
+            print("moving obstacle grad:", grad_h_obs)
+
+        return h_composite, grad_h, dh_dt
     
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
 
         alpha = 0.1
-        h_comp, h_grad, h_dot = self.composite_calc(theta)
-        print("h comp:", h_comp)
-        print("grad_h_comp:", h_grad)
-        print("h_dot:", h_dot)
+        h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
+        h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
+        h_grad_static = np.concatenate((h_grad_static, [1]))
+        h_grad_moving = np.concatenate((h_grad_moving, [1]))
         
+        # QP solver parameters
         P = np.diag([1.0, 1.0, 1.0, 1000.0])
         q = -P @ np.concatenate((u_d, [0.0]))
-        G = -np.concatenate((h_grad, [1]))
-        h = alpha * h_comp + h_dot
+        G = -np.vstack((h_grad_static, h_grad_moving))
+        h = np.array([[alpha * h_comp_static + h_dot_static],
+                      [alpha * h_comp_moving + h_dot_moving]])
         lb = 1.0 * np.array([-1,-1,-1, 0])
         ub = 1.0 * np.array([1, 1, 1, 10])
         print("Gu <", h)

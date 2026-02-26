@@ -186,8 +186,6 @@ if __name__ == "__main__":
     print(f"✓ Policy loaded from {policy_path}\n")
 
     # Load qp filter
-    # pointcloud_path = "./pointcloud/workspace_point_cloud_filtered.npy"
-    # target_pos = np.array([7.0, 0, 1.0])
     cbf = controlBarrierFunction(m, d, xml_path)
 
     d.qpos[19:22] = np.array([1.0, 0.75, 0.0])
@@ -195,7 +193,7 @@ if __name__ == "__main__":
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
-            d.qpos[:2] = [8, 0]
+            d.qpos[:2] = [10, 0]
             # d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
             d.qpos[3:7] = [0, 0, 0, 1]
             
