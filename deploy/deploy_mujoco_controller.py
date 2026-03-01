@@ -189,11 +189,11 @@ if __name__ == "__main__":
     cbf = controlBarrierFunction(m, d, xml_path)
 
     d.qpos[19:22] = np.array([1.0, 0.75, 0.0])
-    moving_obs_cmd = np.array([0.0, 1.0, 0.0])
+    moving_obs_cmd = np.array([0.0, 0.0, 0.0])
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
-            d.qpos[:2] = [10, 0]
+            d.qpos[:2] = [8.0, 0]
             # d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
             d.qpos[3:7] = [0, 0, 0, 1]
             
@@ -221,9 +221,9 @@ if __name__ == "__main__":
                     if args.plot:
                         # Insert into rolling buffer
                         y1_data[buffer_index] = cbf.workspace_target_distance
-                        y2_data[buffer_index] = cbf.h_obs
+                        y2_data[buffer_index] = cbf.h_static_obs
                         y3_data[buffer_index] = cbf.h_workspace
-                        y4_data[buffer_index] = np.linalg.norm(cbf.grad_h_obs)
+                        y4_data[buffer_index] = np.linalg.norm(cbf.grad_h_static_obs)
                         y5_data[buffer_index] = np.linalg.norm(cbf.grad_h_workspace)
 
                         buffer_index = (buffer_index + 1) % max_points
