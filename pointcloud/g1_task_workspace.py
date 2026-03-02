@@ -5,8 +5,6 @@ import time
 import open3d as o3d
 import argparse
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--generate", action="store_true", default=False, help="turn on or off plotting")
@@ -91,15 +89,15 @@ if args.load:
     points = np.load("./pointcloud/workspace_pointcloud_manipulate.npy")
     scores = np.load("./pointcloud/workspace_manipulate_scores.npy")
 
-    threshold = 0.0175
-    score_filter = scores > threshold
-    print(np.sum(score_filter))
-    print(np.sum(points[score_filter], axis=0)/np.sum(score_filter))
+    # threshold = 0.0175
+    # score_filter = scores > threshold
+    # print("Average point within threshold:", np.sum(points[score_filter], axis=0)/np.sum(score_filter))
+    print("Average point within threshold:", np.sum(points * scores[:, None], axis=0)/np.sum(scores))
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     sc = ax.scatter(points[:,0], points[:,1], points[:,2], c=scores, cmap='viridis', marker='o')
-    fig.colorbar(sc, ax=ax, pad=0.1, label='Value Scale')
+    fig.colorbar(sc, ax=ax, pad=0.1, label='Manipulability Score')
 
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
