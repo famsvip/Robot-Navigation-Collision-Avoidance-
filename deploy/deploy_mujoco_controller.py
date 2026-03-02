@@ -213,9 +213,10 @@ if __name__ == "__main__":
                     
                     original_cmd = current_cmd 
                     yaw_angle = root_yaw(d.qpos[3:7])
-                    current_cmd, slack = cbf.qp_filter(current_cmd, yaw_angle)
+                    current_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
                     print("original cmd:", original_cmd, "|| modified cmd:", current_cmd )
-                    print("slack:", slack)
+                    print("static slack:", static_slack)
+                    print("moving slack:", moving_slack)
 
 
                     if args.plot:

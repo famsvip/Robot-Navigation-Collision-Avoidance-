@@ -41,19 +41,15 @@ class controlBarrierFunction():
                                        (max_y + min_y)/2 ,
                                        (max_z + min_z)/2]) + target_body_origin
         
-        # convert workspace into convex hull
+        # convert workspace into convex hull for target reachability awareness
         pointcloud_path = "./pointcloud/workspace_point_cloud_filtered.npy"
         pointcloud = np.load(pointcloud_path)
-        self.workspace_center = np.sum(pointcloud, 0)/pointcloud.shape[0]
-
-        # workspace_mesh = o3d.io.read_triangle_mesh("./workspace_mesh.stl")
-        # workspace_mesh.compute_vertex_normals()
-        # self.scene = o3d.t.geometry.RaycastingScene()
-        # self.scene.add_triangles(o3d.t.geometry.TriangleMesh.from_legacy(workspace_mesh))
-
         workspace_hull = ConvexHull(np.load(pointcloud_path))
         self.workspace_A = workspace_hull.equations[:, :3]
         self.workspace_b = workspace_hull.equations[:, 3]
+
+        # calculated from offline manipulability study
+        self.workspace_center = np.array([0.27320432, 0.00069574, 0.3312343])
 
         # initialize terms
         self.workspace_target_distance = 0.0
@@ -196,24 +192,25 @@ class controlBarrierFunction():
         alpha = 0.2
         h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
         h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
-        h_grad_static = np.concatenate((h_grad_static, [1]))
-        h_grad_moving = np.concatenate((h_grad_moving, [1]))
+        h_grad_static = np.concatenate((h_grad_static, [1], [0]))
+        h_grad_moving = np.concatenate((h_grad_moving, [0], [1]))
         
         # QP solver parameters
-        P = np.diag([1.0, 1.0, 0.1, 1000.0])
-        q = -P @ np.concatenate((u_d, [0.0]))
+        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0])
+        q = -P @ np.concatenate((u_d, [0.0], [0.0]))
         G = -np.vstack((h_grad_static, h_grad_moving))
         h = np.array([[alpha * h_comp_static + h_dot_static],
                       [alpha * h_comp_moving + h_dot_moving]])
-        lb = 1.0 * np.array([-1,-1,-1, 0])
-        ub = 1.0 * np.array([1, 1, 1, 10])
+        lb = 1.0 * np.array([-1,-1,-1, 0, 0])
+        ub = 1.0 * np.array([1, 1, 1, 10, 10])
         print("Gu <", h)
         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
 
         u = np.round(solution[:3], 2)
-        slack = solution[3]
+        static_slack = solution[3]
+        moving_slack = solution[4]
         print("==================================================================")
 
-        return u, slack
+        return u, static_slack, moving_slack
 
         
