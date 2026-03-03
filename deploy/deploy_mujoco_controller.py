@@ -194,8 +194,8 @@ if __name__ == "__main__":
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
             d.qpos[:2] = [8.0, 0]
-            # d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
-            d.qpos[3:7] = [0, 0, 0, 1]
+            d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
+            # d.qpos[3:7] = [0, 0, 0, 1]
             
             start = time.time()
             buffer_index = 0
@@ -213,7 +213,7 @@ if __name__ == "__main__":
                     
                     original_cmd = current_cmd 
                     yaw_angle = root_yaw(d.qpos[3:7])
-                    current_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
+                    current_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(current_cmd, yaw_angle)
                     print("original cmd:", original_cmd, "|| modified cmd:", current_cmd )
                     print("static slack:", static_slack)
                     print("moving slack:", moving_slack)
