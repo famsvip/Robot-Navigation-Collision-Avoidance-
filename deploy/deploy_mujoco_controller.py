@@ -193,9 +193,9 @@ if __name__ == "__main__":
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
-            d.qpos[:2] = [8.0, 0]
             # d.qpos[:2] = [3, -5]
             # d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
+            d.qpos[:2] = [8.0, 0]
             d.qpos[3:7] = [0, 0, 0, 1]
             
             start = time.time()
@@ -206,19 +206,21 @@ if __name__ == "__main__":
                 d.ctrl[:] = tau
                 mujoco.mj_step(m, d)
 
+                original_cmd = cmd.copy()
+                yaw_angle = root_yaw(d.qpos[3:7])
+                modified_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(original_cmd, yaw_angle)
+              
                 counter += 1
                 if counter % control_decimation == 0:
                     # Get current cmd value (thread-safe)
                     with cmd_lock:
                         current_cmd = cmd.copy()
-                    
-                    original_cmd = current_cmd 
-                    yaw_angle = root_yaw(d.qpos[3:7])
-                    current_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(current_cmd, yaw_angle)
-                    print("original cmd:", original_cmd, "|| modified cmd:", current_cmd )
+
+                    print("original cmd:", original_cmd, "|| modified cmd:", modified_cmd )
                     print("static slack:", static_slack)
                     print("moving slack:", moving_slack)
                     print("workspace slack:", workspace_slack)
+                    print("static h:", cbf.h_static_obs)
 
 
                     if args.plot:
@@ -265,7 +267,7 @@ if __name__ == "__main__":
 
                     obs[:3] = omega
                     obs[3:6] = gravity_orientation
-                    obs[6:9] = current_cmd * cmd_scale
+                    obs[6:9] = modified_cmd * cmd_scale
                     obs[9 : 9 + num_actions] = qj
                     obs[9 + num_actions : 9 + 2 * num_actions] = dqj
                     obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action

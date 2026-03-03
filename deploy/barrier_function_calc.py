@@ -118,7 +118,6 @@ class controlBarrierFunction():
         # time derivative 
         obs_vel = R_world_to_body @ self.data.qvel[18:]
         dh_dt = -self.grad_h_moving_obs @ obs_vel
-        print("dh/dt:", dh_dt)
 
         return self.h_moving_obs, self.grad_h_moving_obs, dh_dt
 
@@ -141,19 +140,19 @@ class controlBarrierFunction():
         self.workspace_target_distance = np.linalg.norm(rotated_target - self.workspace_center)
         sigmoid =  1/(1+np.exp(beta*(self.workspace_target_distance - gamma)))
         self.h_workspace = alpha * sigmoid
-        print("Rotated Target:", rotated_target)
-        print("Workspace Center:", self.workspace_center)
-        print("Vector from center to target:", rotated_target - self.workspace_center)
+        # print("Rotated Target:", rotated_target)
+        # print("Workspace Center:", self.workspace_center)
+        # print("Vector from center to target:", rotated_target - self.workspace_center)
         
         grad_d_wrt_pos = -(rotated_target - self.workspace_center)/self.workspace_target_distance
         grad_d_wrt_theta = -grad_d_wrt_pos @ grad_R_wrt_theta @ rel_target_pos
         grad_d = np.concatenate((grad_d_wrt_pos[:2], [grad_d_wrt_theta]))
         self.grad_h_workspace = -alpha * beta * sigmoid * (1-sigmoid) * grad_d
 
-        print("Unscaled grad:", grad_d)
-        signed_distances = A @ rotated_target + b
-        if np.all(signed_distances<0):
-            print("TARGET ACQUIRED")
+        # print("Unscaled grad:", grad_d)
+        # signed_distances = A @ rotated_target + b
+        # if np.all(signed_distances<0):
+        #     print("TARGET ACQUIRED")
 
         return self.h_workspace, self.grad_h_workspace
     
@@ -188,7 +187,7 @@ class controlBarrierFunction():
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
 
-        alpha_1 = 0.2
+        alpha_1 = 1.0
         alpha_2 = 0.2
         alpha_3 = 0.2
         h_static, grad_h_static = self.static_obs_calc(theta)
@@ -207,7 +206,7 @@ class controlBarrierFunction():
                       [alpha_3 * h_workspace]])
         lb = 1.0 * np.array([-1,-1,-1, 0, 0, 0])
         ub = 1.0 * np.array([1, 1, 1, 10, 10, 10])
-        print("Gu <", h)
+        # print("Gu <", h)
         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
 
         u = np.round(solution[:3], 2)
@@ -215,13 +214,13 @@ class controlBarrierFunction():
         moving_slack = solution[4]
         workspace_slack = solution[5]
 
-        print("h static:", h_static)
-        print("h moving:", h_moving)
-        print("h workspace:", h_workspace)
-        print("static obstacle grad:", grad_h_static)
-        print("moving obstacle grad:", grad_h_moving)
-        print("workspace grad:", grad_h_workspace)
-        print("==================================================================")
+        # print("h static:", h_static)
+        # print("h moving:", h_moving)
+        # print("h workspace:", h_workspace)
+        # print("static obstacle grad:", grad_h_static)
+        # print("moving obstacle grad:", grad_h_moving)
+        # print("workspace grad:", grad_h_workspace)
+        # print("==================================================================")
 
         return u, static_slack, moving_slack, workspace_slack
 
