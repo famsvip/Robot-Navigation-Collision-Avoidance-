@@ -193,7 +193,7 @@ if __name__ == "__main__":
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
-            d.qpos[:2] = [8.0, 0]
+            d.qpos[:2] = [9.0, 0]
             d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
             # d.qpos[3:7] = [0, 0, 0, 1]
             
@@ -220,6 +220,9 @@ if __name__ == "__main__":
                     print("moving slack:", moving_slack)
                     print("workspace slack:", workspace_slack)
                     print("static h:", cbf.h_static_obs)
+                    print("workspace h:", cbf.h_workspace)
+                    print("grad static h:", cbf.grad_h_static_obs)
+                    print("grad workspace h:", cbf.grad_h_workspace)
 
 
                     if args.plot:
