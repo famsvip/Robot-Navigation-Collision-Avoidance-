@@ -5,7 +5,6 @@ from scipy.spatial import ConvexHull
 import open3d as o3d
 from qpsolvers import solve_qp
 import xml.etree.ElementTree as ET
-import open3d as o3d
 
 class controlBarrierFunction():
 
@@ -190,27 +189,38 @@ class controlBarrierFunction():
         '''u_d is the policy output command (3,)'''
 
         alpha = 0.2
-        h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
-        h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
-        h_grad_static = np.concatenate((h_grad_static, [1], [0]))
-        h_grad_moving = np.concatenate((h_grad_moving, [0], [1]))
+        h_static, grad_h_static = self.static_obs_calc(theta)
+        h_moving, grad_h_moving, dh_dt = self.moving_obs_calc(theta)
+        h_workspace, grad_h_workspace = self.workspace_calc(0.5, 2, 2, theta)
+        grad_h_static = np.concatenate((grad_h_static, [1], [0], [0]))
+        grad_h_moving = np.concatenate((grad_h_moving, [0], [1], [0]))
+        grad_h_workspace = np.concatenate((grad_h_workspace, [0], [0], [1]))
         
         # QP solver parameters
-        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0])
-        q = -P @ np.concatenate((u_d, [0.0], [0.0]))
-        G = -np.vstack((h_grad_static, h_grad_moving))
-        h = np.array([[alpha * h_comp_static + h_dot_static],
-                      [alpha * h_comp_moving + h_dot_moving]])
-        lb = 1.0 * np.array([-1,-1,-1, 0, 0])
-        ub = 1.0 * np.array([1, 1, 1, 10, 10])
+        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0, 1000.0])
+        q = -P @ np.concatenate((u_d, [0.0], [0.0], [0.0]))
+        G = -np.vstack((grad_h_static, grad_h_moving, grad_h_workspace))
+        h = np.array([[alpha * h_static],
+                      [alpha * h_moving + dh_dt],
+                      [alpha * h_workspace]])
+        lb = 1.0 * np.array([-1,-1,-1, 0, 0, 0])
+        ub = 1.0 * np.array([1, 1, 1, 10, 10, 10])
         print("Gu <", h)
         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
 
         u = np.round(solution[:3], 2)
         static_slack = solution[3]
         moving_slack = solution[4]
+        workspace_slack = solution[5]
+
+        print("h static:", h_static)
+        print("h moving:", h_moving)
+        print("h workspace:", h_workspace)
+        print("static obstacle grad:", grad_h_static)
+        print("moving obstacle grad:", grad_h_moving)
+        print("workspace grad:", grad_h_workspace)
         print("==================================================================")
 
-        return u, static_slack, moving_slack
+        return u, static_slack, moving_slack, workspace_slack
 
         
