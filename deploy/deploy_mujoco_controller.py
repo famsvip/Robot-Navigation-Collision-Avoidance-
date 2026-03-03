@@ -205,18 +205,21 @@ if __name__ == "__main__":
                 d.ctrl[:] = tau
                 mujoco.mj_step(m, d)
 
+                original_cmd = cmd.copy()
+                yaw_angle = root_yaw(d.qpos[3:7])
+                modified_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(original_cmd, yaw_angle)
+
                 counter += 1
                 if counter % control_decimation == 0:
                     # Get current cmd value (thread-safe)
                     with cmd_lock:
                         current_cmd = cmd.copy()
                     
-                    original_cmd = current_cmd 
-                    yaw_angle = root_yaw(d.qpos[3:7])
-                    current_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(current_cmd, yaw_angle)
-                    print("original cmd:", original_cmd, "|| modified cmd:", current_cmd )
+                    print("original cmd:", original_cmd, "|| modified cmd:", modified_cmd )
                     print("static slack:", static_slack)
                     print("moving slack:", moving_slack)
+                    print("workspace slack:", workspace_slack)
+                    print("static h:", cbf.h_static_obs)
 
 
                     if args.plot:

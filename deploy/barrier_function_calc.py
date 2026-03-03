@@ -187,7 +187,7 @@ class controlBarrierFunction():
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
 
-        alpha_1 = 0.2
+        alpha_1 = 1.0
         alpha_2 = 0.2
         alpha_3 = 0.2
         h_static, grad_h_static = self.static_obs_calc(theta)
