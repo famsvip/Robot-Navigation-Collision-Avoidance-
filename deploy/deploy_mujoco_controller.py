@@ -204,19 +204,26 @@ if __name__ == "__main__":
                 tau = pd_control(target_dof_pos, d.qpos[7:19], kps, np.zeros_like(kds), d.qvel[6:18], kds)
                 d.ctrl[:] = tau
                 mujoco.mj_step(m, d)
-
+                
                 counter += 1
                 if counter % control_decimation == 0:
                     # Get current cmd value (thread-safe)
+
                     with cmd_lock:
                         current_cmd = cmd.copy()
-                    
-                    original_cmd = current_cmd 
+
                     yaw_angle = root_yaw(d.qpos[3:7])
-                    current_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
-                    print("original cmd:", original_cmd, "|| modified cmd:", current_cmd )
+                    modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
+                    
+                    print("original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
                     print("static slack:", static_slack)
                     print("moving slack:", moving_slack)
+                    print("static h:", cbf.h_static_obs)
+                    print("workspace h:", cbf.h_workspace)
+                    print("composite h:", cbf.h_static_obs + cbf.h_workspace)
+                    print("grad static h:", cbf.grad_h_static_obs)
+                    print("grad workspace h:", cbf.grad_h_workspace)
+                    print("grad composite h:", cbf.grad_h_static_obs + cbf.grad_h_moving_obs)
 
 
                     if args.plot:
@@ -263,7 +270,7 @@ if __name__ == "__main__":
 
                     obs[:3] = omega
                     obs[3:6] = gravity_orientation
-                    obs[6:9] = current_cmd * cmd_scale
+                    obs[6:9] = modified_cmd * cmd_scale
                     obs[9 : 9 + num_actions] = qj
                     obs[9 + num_actions : 9 + 2 * num_actions] = dqj
                     obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
