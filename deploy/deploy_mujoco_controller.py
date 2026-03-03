@@ -188,12 +188,13 @@ if __name__ == "__main__":
     # Load qp filter
     cbf = controlBarrierFunction(m, d, xml_path)
 
-    d.qpos[19:22] = np.array([1.0, 0.75, 0.0])
+    d.qpos[19:22] = np.array([8.0, 5.0, 0.0])
     moving_obs_cmd = np.array([0.0, 0.0, 0.0])
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
             d.qpos[:2] = [8.0, 0]
+            # d.qpos[:2] = [3, -5]
             # d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
             d.qpos[3:7] = [0, 0, 0, 1]
             
