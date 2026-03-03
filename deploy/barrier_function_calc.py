@@ -138,16 +138,17 @@ class controlBarrierFunction():
             ])
         rotated_target = R_world_to_body @ rel_target_pos
         self.workspace_target_distance = np.linalg.norm(rotated_target - self.workspace_center)
-        sigmoid =  1/(1+np.exp(beta*(self.workspace_target_distance - gamma)))
-        self.h_workspace = alpha * sigmoid
+        # sigmoid =  1/(1+np.exp(beta*(self.workspace_target_distance - gamma)))
+        # self.h_workspace = alpha * sigmoid
         # print("Rotated Target:", rotated_target)
         # print("Workspace Center:", self.workspace_center)
         # print("Vector from center to target:", rotated_target - self.workspace_center)
+        self.h_workspace = self.workspace_target_distance**2
         
         grad_d_wrt_pos = -(rotated_target - self.workspace_center)/self.workspace_target_distance
-        grad_d_wrt_theta = -grad_d_wrt_pos @ grad_R_wrt_theta @ rel_target_pos
+        grad_d_wrt_theta = -grad_d_wrt_pos @ grad_R_wrt_theta
         grad_d = np.concatenate((grad_d_wrt_pos[:2], [grad_d_wrt_theta]))
-        self.grad_h_workspace = -alpha * beta * sigmoid * (1-sigmoid) * grad_d
+        self.grad_h_workspace = 2 * self.h_workspace * grad_d
 
         # print("Unscaled grad:", grad_d)
         # signed_distances = A @ rotated_target + b
@@ -193,7 +194,7 @@ class controlBarrierFunction():
         h_static, grad_h_static = self.static_obs_calc(theta)
         h_moving, grad_h_moving, dh_dt = self.moving_obs_calc(theta)
         h_workspace, grad_h_workspace = self.workspace_calc(0.5, 2, 0.5, theta)
-        grad_h_static = np.concatenate((grad_h_static, [1], [0], [0]))
+        grad_h_static = np.concatenate((grad_h_static, [0], [0], [0]))
         grad_h_moving = np.concatenate((grad_h_moving, [0], [1], [0]))
         grad_h_workspace = np.concatenate((grad_h_workspace, [0], [0], [1]))
         
