@@ -188,6 +188,10 @@ if __name__ == "__main__":
     # Load qp filter
     cbf = controlBarrierFunction(m, d, xml_path)
 
+    # Store data
+    root_pos = []
+    max_recorded_step = 1e4
+
     d.qpos[19:22] = np.array([8.0, 5.0, 0.0])
     moving_obs_cmd = np.array([0.0, 0.0, 0.0])
     try:
@@ -205,15 +209,20 @@ if __name__ == "__main__":
                 tau = pd_control(target_dof_pos, d.qpos[7:19], kps, np.zeros_like(kds), d.qvel[6:18], kds)
                 d.ctrl[:] = tau
                 mujoco.mj_step(m, d)
+
+                yaw_angle = root_yaw(d.qpos[3:7])
+                if counter < max_recorded_step:
+                    root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
               
                 counter += 1
                 if counter % control_decimation == 0:
                     # Get current cmd value (thread-safe)
                     with cmd_lock:
                         current_cmd = cmd.copy()
+                        current_cmd = [1.0, 0.0, 0.0]
 
-                    yaw_angle = root_yaw(d.qpos[3:7])
                     modified_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(current_cmd, yaw_angle)
+                    print("Simulation Count:", counter)
 
                     print("original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
                     print("static slack:", static_slack)
@@ -296,3 +305,5 @@ if __name__ == "__main__":
     finally:
         listener.stop()
         print("Keyboard listener stopped")
+        np.save("./data/separate_trial_1", np.array(root_pos))
+        print("Data saved")
