@@ -150,10 +150,10 @@ class controlBarrierFunction():
         grad_d = np.concatenate((grad_d_wrt_pos[:2], [grad_d_wrt_theta]))
         self.grad_h_workspace = -alpha * beta * sigmoid * (1-sigmoid) * grad_d
 
-        # print("Unscaled grad:", grad_d)
-        # signed_distances = A @ rotated_target + b
-        # if np.all(signed_distances<0):
-        #     print("TARGET ACQUIRED")
+        print("Unscaled grad:", grad_d)
+        signed_distances = A @ rotated_target + b
+        if np.all(signed_distances<0):
+            print("TARGET ACQUIRED")
 
         return self.h_workspace, self.grad_h_workspace
     
