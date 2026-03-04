@@ -80,7 +80,7 @@ class controlBarrierFunction():
             grad = data.sensordata[normal_adr:normal_adr+3]
         grad[2] = 0.0 # remove z component
 
-        self.h_static_obs = min_distance - 0.1
+        self.h_static_obs = min_distance
 
         # planar version of rotation matrix (pure yaw)
         R_world_to_body = np.array([
@@ -143,12 +143,12 @@ class controlBarrierFunction():
         # print("Rotated Target:", rotated_target)
         # print("Workspace Center:", self.workspace_center)
         # print("Vector from center to target:", rotated_target - self.workspace_center)
-        self.h_workspace = self.workspace_target_distance**2
+        self.h_workspace = self.workspace_target_distance
         
         grad_d_wrt_pos = -(rotated_target - self.workspace_center)/self.workspace_target_distance
-        grad_d_wrt_theta = -grad_d_wrt_pos @ grad_R_wrt_theta
+        grad_d_wrt_theta = -grad_d_wrt_pos @ grad_R_wrt_theta @ rel_target_pos
         grad_d = np.concatenate((grad_d_wrt_pos[:2], [grad_d_wrt_theta]))
-        self.grad_h_workspace = 2 * self.h_workspace * grad_d
+        self.grad_h_workspace = grad_d
 
         # print("Unscaled grad:", grad_d)
         # signed_distances = A @ rotated_target + b
@@ -188,28 +188,27 @@ class controlBarrierFunction():
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
 
-        alpha_1 = 1.0
+        alpha_1 = 0.2
         alpha_2 = 0.2
-        alpha_3 = 0.2
+        alpha_3 = 0.01
         h_static, grad_h_static = self.static_obs_calc(theta)
         h_moving, grad_h_moving, dh_dt = self.moving_obs_calc(theta)
         h_workspace, grad_h_workspace = self.workspace_calc(0.5, 2, 0.5, theta)
-        grad_h_static = np.concatenate((grad_h_static, [0], [0], [0]))
+        grad_h_static = np.concatenate((grad_h_static, [1], [0], [0]))
         grad_h_moving = np.concatenate((grad_h_moving, [0], [1], [0]))
         grad_h_workspace = np.concatenate((grad_h_workspace, [0], [0], [1]))
         
         # QP solver parameters
-        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0, 1000.0])
+        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0, 1.0])
         q = -P @ np.concatenate((u_d, [0.0], [0.0], [0.0]))
-        G = -np.vstack((grad_h_static, grad_h_moving, grad_h_workspace))
+        G = np.vstack((-grad_h_static, -grad_h_moving, grad_h_workspace))
         h = np.array([[alpha_1 * h_static],
                       [alpha_2 * h_moving + dh_dt],
-                      [alpha_3 * h_workspace]])
+                      [-alpha_3 * h_workspace]])
         lb = 1.0 * np.array([-1,-1,-1, 0, 0, 0])
         ub = 1.0 * np.array([1, 1, 1, 10, 10, 10])
         # print("Gu <", h)
         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
-
         u = np.round(solution[:3], 2)
         static_slack = solution[3]
         moving_slack = solution[4]

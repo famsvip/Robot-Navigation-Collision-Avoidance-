@@ -195,8 +195,8 @@ if __name__ == "__main__":
             # start position and orientation
             # d.qpos[:2] = [3, -5]
             # d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
-            d.qpos[:2] = [8.0, 0]
-            d.qpos[3:7] = [0, 0, 0, 1]
+            # d.qpos[:2] = [8.0, 0]
+            # d.qpos[3:7] = [0, 0, 0, 1]
             
             start = time.time()
             buffer_index = 0
@@ -205,10 +205,6 @@ if __name__ == "__main__":
                 tau = pd_control(target_dof_pos, d.qpos[7:19], kps, np.zeros_like(kds), d.qvel[6:18], kds)
                 d.ctrl[:] = tau
                 mujoco.mj_step(m, d)
-
-                original_cmd = cmd.copy()
-                yaw_angle = root_yaw(d.qpos[3:7])
-                modified_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(original_cmd, yaw_angle)
               
                 counter += 1
                 if counter % control_decimation == 0:
@@ -216,12 +212,17 @@ if __name__ == "__main__":
                     with cmd_lock:
                         current_cmd = cmd.copy()
 
-                    print("original cmd:", original_cmd, "|| modified cmd:", modified_cmd )
+                    yaw_angle = root_yaw(d.qpos[3:7])
+                    modified_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(current_cmd, yaw_angle)
+
+                    print("original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
                     print("static slack:", static_slack)
                     print("moving slack:", moving_slack)
                     print("workspace slack:", workspace_slack)
                     print("static h:", cbf.h_static_obs)
-
+                    print("workspace h:", cbf.h_workspace)
+                    print("grad static h:", cbf.grad_h_static_obs)
+                    print("grad workspace h:", cbf.grad_h_workspace)
 
                     if args.plot:
                         # Insert into rolling buffer
