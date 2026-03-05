@@ -306,5 +306,5 @@ if __name__ == "__main__":
     finally:
         listener.stop()
         print("Keyboard listener stopped")
-        np.save("./data/composite_trial_1", np.array(root_pos))
+        np.save("./data/composite_trial_2", np.array(root_pos))
         print("Data saved")

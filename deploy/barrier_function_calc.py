@@ -162,7 +162,7 @@ class controlBarrierFunction():
         if mode:
             h_obs, grad_h_obs = self.static_obs_calc(theta)
             dh_dt = 0
-            h_work, grad_h_work = self.workspace_calc(0.5, 2, 0.5, theta)
+            h_work, grad_h_work = self.workspace_calc(0.25, 3, 0.5, theta)
 
             h_composite = h_obs + h_work
             grad_h = grad_h_obs + grad_h_work
