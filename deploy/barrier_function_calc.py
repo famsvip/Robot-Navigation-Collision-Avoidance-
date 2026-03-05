@@ -151,9 +151,9 @@ class controlBarrierFunction():
         self.grad_h_workspace = grad_d
 
         # print("Unscaled grad:", grad_d)
-        # signed_distances = A @ rotated_target + b
-        # if np.all(signed_distances<0):
-        #     print("TARGET ACQUIRED")
+        signed_distances = A @ rotated_target + b
+        if np.all(signed_distances<0):
+            print("TARGET ACQUIRED")
 
         return self.h_workspace, self.grad_h_workspace
     
@@ -190,16 +190,16 @@ class controlBarrierFunction():
 
         alpha_1 = 0.2
         alpha_2 = 0.2
-        alpha_3 = 0.01
+        alpha_3 = 0.2
         h_static, grad_h_static = self.static_obs_calc(theta)
         h_moving, grad_h_moving, dh_dt = self.moving_obs_calc(theta)
         h_workspace, grad_h_workspace = self.workspace_calc(0.5, 2, 0.5, theta)
         grad_h_static = np.concatenate((grad_h_static, [1], [0], [0]))
         grad_h_moving = np.concatenate((grad_h_moving, [0], [1], [0]))
-        grad_h_workspace = np.concatenate((grad_h_workspace, [0], [0], [1]))
+        grad_h_workspace = np.concatenate((grad_h_workspace, [0], [0], [-1]))
         
         # QP solver parameters
-        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0, 1.0])
+        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0, 200.0])
         q = -P @ np.concatenate((u_d, [0.0], [0.0], [0.0]))
         G = np.vstack((-grad_h_static, -grad_h_moving, grad_h_workspace))
         h = np.array([[alpha_1 * h_static],
