@@ -190,29 +190,24 @@ class controlBarrierFunction():
 
         alpha_1 = 0.2
         alpha_2 = 0.2
-        alpha_3 = 0.2
         h_static, grad_h_static = self.static_obs_calc(theta)
         h_moving, grad_h_moving, dh_dt = self.moving_obs_calc(theta)
-        h_workspace, grad_h_workspace = self.workspace_calc(0.5, 2, 0.5, theta)
-        grad_h_static = np.concatenate((grad_h_static, [1], [0], [0]))
-        grad_h_moving = np.concatenate((grad_h_moving, [0], [1], [0]))
-        grad_h_workspace = np.concatenate((grad_h_workspace, [0], [0], [-1]))
+        grad_h_static = np.concatenate((grad_h_static, [1], [0]))
+        grad_h_moving = np.concatenate((grad_h_moving, [0], [1]))
         
         # QP solver parameters
-        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0, 200.0])
-        q = -P @ np.concatenate((u_d, [0.0], [0.0], [0.0]))
-        G = np.vstack((-grad_h_static, -grad_h_moving, grad_h_workspace))
+        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0])
+        q = -P @ np.concatenate((u_d, [0.0], [0.0]))
+        G = np.vstack((-grad_h_static, -grad_h_moving))
         h = np.array([[alpha_1 * h_static],
-                      [alpha_2 * h_moving + dh_dt],
-                      [-alpha_3 * h_workspace]])
-        lb = 1.0 * np.array([-1,-1,-1, 0, 0, 0])
-        ub = 1.0 * np.array([1, 1, 1, 10, 10, 10])
+                      [alpha_2 * h_moving + dh_dt]])
+        lb = 1.0 * np.array([-1,-1,-1, 0, 0])
+        ub = 1.0 * np.array([1, 1, 1, 10, 10])
         # print("Gu <", h)
         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
         u = np.round(solution[:3], 2)
         static_slack = solution[3]
         moving_slack = solution[4]
-        workspace_slack = solution[5]
 
         # print("h static:", h_static)
         # print("h moving:", h_moving)
@@ -222,6 +217,6 @@ class controlBarrierFunction():
         # print("workspace grad:", grad_h_workspace)
         # print("==================================================================")
 
-        return u, static_slack, moving_slack, workspace_slack
+        return u, static_slack, moving_slack
 
         

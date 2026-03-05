@@ -221,13 +221,12 @@ if __name__ == "__main__":
                         current_cmd = cmd.copy()
                         current_cmd = [1.0, 0.0, 0.0]
 
-                    modified_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(current_cmd, yaw_angle)
+                    modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
                     print("Simulation Count:", counter)
 
                     print("original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
                     print("static slack:", static_slack)
                     print("moving slack:", moving_slack)
-                    print("workspace slack:", workspace_slack)
                     print("static h:", cbf.h_static_obs)
                     print("workspace h:", cbf.h_workspace)
                     print("grad static h:", cbf.grad_h_static_obs)
@@ -305,5 +304,5 @@ if __name__ == "__main__":
     finally:
         listener.stop()
         print("Keyboard listener stopped")
-        np.save("./data/separate_trial_3", np.array(root_pos))
+        np.save("./data/pure_trial_1", np.array(root_pos))
         print("Data saved")
