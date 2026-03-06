@@ -190,6 +190,7 @@ if __name__ == "__main__":
     # Store data
     root_pos = []
     mod_cmds = []
+    constraint_values = []
     max_recorded_step = 1e4
 
     d.qpos[19:22] = np.array([7.0, 0.0, 0.0])
@@ -224,6 +225,7 @@ if __name__ == "__main__":
                     modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
                     if counter < max_recorded_step:
                         mod_cmds.append(modified_cmd)
+                        constraint_values.append([cbf.h_static_obs, cbf.h_workspace, np.linalg.norm(cbf.grad_h_static_obs), np.linalg.norm(cbf.grad_h_workspace), cbf.static_slack])
                     print("Simulation Count:", counter)
                     
                     print("original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
@@ -309,6 +311,7 @@ if __name__ == "__main__":
     finally:
         listener.stop()
         print("Keyboard listener stopped")
-        np.save("./data/composite_trial_2", np.array(root_pos))
+        np.save("./data/composite_pos", np.array(root_pos))
         np.save("./data/composite_cmds", np.array(mod_cmds))
+        np.save("./data/composite_values", np.array([constraint_values]))
         print("Data saved")

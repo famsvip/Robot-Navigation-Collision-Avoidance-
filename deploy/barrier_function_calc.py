@@ -59,6 +59,8 @@ class controlBarrierFunction():
         self.grad_h_static_obs = 0.0
         self.grad_h_moving_obs = 0.0
         self.grad_h_workspace = 0.0
+        self.static_slack = 0.0
+        self.moving_slack = 0.0
 
 
     def static_obs_calc(self, theta):
@@ -206,10 +208,10 @@ class controlBarrierFunction():
         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
 
         u = np.round(solution[:3], 2)
-        static_slack = solution[3]
-        moving_slack = solution[4]
+        self.static_slack = solution[3]
+        self.moving_slack = solution[4]
         # print("==================================================================")
 
-        return u, static_slack, moving_slack
+        return u, self.static_slack, self.moving_slack
 
         
