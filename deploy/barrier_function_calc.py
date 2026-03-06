@@ -138,17 +138,13 @@ class controlBarrierFunction():
             ])
         rotated_target = R_world_to_body @ rel_target_pos
         self.workspace_target_distance = np.linalg.norm(rotated_target - self.workspace_center)
-        # sigmoid =  1/(1+np.exp(beta*(self.workspace_target_distance - gamma)))
-        # self.h_workspace = alpha * sigmoid
-        # print("Rotated Target:", rotated_target)
-        # print("Workspace Center:", self.workspace_center)
-        # print("Vector from center to target:", rotated_target - self.workspace_center)
-        self.h_workspace = self.workspace_target_distance
+        sigmoid =  1/(1+np.exp(beta*(self.workspace_target_distance - gamma)))
+        self.h_workspace = alpha * sigmoid
         
         grad_d_wrt_pos = -(rotated_target - self.workspace_center)/self.workspace_target_distance
         grad_d_wrt_theta = -grad_d_wrt_pos @ grad_R_wrt_theta @ rel_target_pos
         grad_d = np.concatenate((grad_d_wrt_pos[:2], [grad_d_wrt_theta]))
-        self.grad_h_workspace = grad_d
+        self.grad_h_workspace = -alpha * beta * sigmoid * (1-sigmoid) * grad_d
 
         # print("Unscaled grad:", grad_d)
         signed_distances = A @ rotated_target + b
