@@ -309,5 +309,5 @@ if __name__ == "__main__":
         listener.stop()
         print("Keyboard listener stopped")
         np.save("./data/separated_sigmoid_pos", np.array(root_pos))
-        np.save("./data/separated_cmds", np.array(mod_cmds))
+        np.save("./data/separated_sigmoid_cmds", np.array(mod_cmds))
         print("Data saved")
