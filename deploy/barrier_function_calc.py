@@ -11,14 +11,31 @@ class controlBarrierFunction():
 
     def __init__(
         self,
-        model,
-        data,
-        xml_path
+        xml_path,
+        exp_config
     ):
-        self.model = model
-        self.data = data
 
-        # extract mesh information from xml
+        # experiment configuration parameters
+        target_body_origin = exp_config["target_pos"]
+        shelf_pos = exp_config["shelf_pos"]
+        moving_obs_pos = exp_config["moving_obs_pos"]
+        self.moving_obs_cmd = np.array(exp_config["moving_obs_cmd"])
+        self.alpha_static = exp_config["alpha_static"]
+        self.alpha_moving = exp_config["alpha_moving"]
+        self.x_weight = exp_config["x_weight"]
+        self.y_weight = exp_config["y_weight"]
+        self.theta_weight = exp_config["theta_weight"]
+        self.slack_static = exp_config["slack_static_weight"]
+        self.slack_moving = exp_config["slack_moving_weight"]
+        self.sigmoid_a = exp_config["sigmoid_a"]
+        self.sigmoid_b = exp_config["sigmoid_b"]
+        self.sigmoid_c = exp_config["sigmoid_c"]
+        # data storage paths
+        self.pos_path = exp_config["pos_path"]
+        self.cmd_path = exp_config["cmd_path"]
+        self.val_path = exp_config["val_path"]
+
+        # xml modifications and data extraction
         tree = ET.parse(xml_path)
         root = tree.getroot()
         target_mesh = root.find(".//mesh[@name='target_mesh']")
@@ -26,9 +43,18 @@ class controlBarrierFunction():
         target_mesh_path = "./" + target_mesh_path[target_mesh_path.find("custom_meshes"):]
         self.target_mesh = o3d.io.read_triangle_mesh(target_mesh_path)
         self.target_points = np.unique(np.asarray(self.target_mesh.vertices), axis=0)
+        # update target position
         target_body = root.find(".//body[@name='target']")
-        target_body_origin = target_body.get("pos")
-        target_body_origin = np.fromstring(target_body_origin, sep=' ')
+        target_body.set("pos", target_body_origin)
+        # update shelf position
+        shelf_body = root.find(".//geom[@name='obs4']")
+        shelf_body.set("pos", shelf_pos)
+        tree.write(xml_path)
+        print("XML Modified")
+
+        self.model = mujoco.MjModel.from_xml_path(xml_path)
+        self.data = mujoco.MjData(self.model)
+        self.data.qpos[19:22] = moving_obs_pos  
 
         # represent target as a bounding box and express center in world coordinates
         min_x = np.min(self.target_points[:,0])
@@ -39,7 +65,7 @@ class controlBarrierFunction():
         max_z = np.max(self.target_points[:,2])
         self.target_pos = np.array([(max_x + min_x)/2, 
                                        (max_y + min_y)/2 ,
-                                       (max_z + min_z)/2]) + target_body_origin
+                                       (max_z + min_z)/2]) + np.fromstring(target_body_origin, dtype=np.float64, sep=' ')
         
         # convert workspace into convex hull for target reachability awareness
         pointcloud_path = "./pointcloud/workspace_point_cloud_filtered.npy"
@@ -59,8 +85,6 @@ class controlBarrierFunction():
         self.grad_h_static_obs = 0.0
         self.grad_h_moving_obs = 0.0
         self.grad_h_workspace = 0.0
-        self.static_slack = 0.0
-        self.moving_slack = 0.0
 
 
     def static_obs_calc(self, theta):
@@ -164,7 +188,7 @@ class controlBarrierFunction():
         if mode:
             h_obs, grad_h_obs = self.static_obs_calc(theta)
             dh_dt = 0
-            h_work, grad_h_work = self.workspace_calc(0.25, 3, 0.5, theta)
+            h_work, grad_h_work = self.workspace_calc(self.sigmoid_a, self.sigmoid_b, self.sigmoid_c, theta)
 
             h_composite = h_obs + h_work
             grad_h = grad_h_obs + grad_h_work
@@ -190,18 +214,17 @@ class controlBarrierFunction():
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
 
-        alpha = 0.2
         h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
         h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
         h_grad_static = np.concatenate((h_grad_static, [1], [0]))
         h_grad_moving = np.concatenate((h_grad_moving, [0], [1]))
         
         # QP solver parameters
-        P = np.diag([1.0, 1.0, 0.1, 1000.0, 1000.0])
+        P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving])
         q = -P @ np.concatenate((u_d, [0.0], [0.0]))
         G = -np.vstack((h_grad_static, h_grad_moving))
-        h = np.array([[alpha * h_comp_static + h_dot_static],
-                      [alpha * h_comp_moving + h_dot_moving]])
+        h = np.array([[self.alpha_static * h_comp_static + h_dot_static],
+                      [self.alpha_moving * h_comp_moving + h_dot_moving]])
         lb = 1.0 * np.array([-1,-1,-1, 0, 0])
         ub = 1.0 * np.array([1, 1, 1, 10, 10])
         # print("Gu <", h)

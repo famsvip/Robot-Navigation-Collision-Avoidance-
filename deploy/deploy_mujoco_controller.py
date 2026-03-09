@@ -122,15 +122,13 @@ def on_press(key):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("config_file", type=str, help="config file name in the config folder")
+    parser.add_argument("exp_config", type=str, help="config file name in the config folder")
     parser.add_argument("--plot", action="store_true", default=False, help="turn on or off plotting")
     args = parser.parse_args()
-    config_file = args.config_file
+    exp_config_file = args.exp_config
     
-    with open(f"../unitree_rl_gym/deploy/deploy_mujoco/configs/{config_file}", "r") as f:
+    with open(f"../unitree_rl_gym/deploy/deploy_mujoco/configs/g1.yaml", "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-        # policy_path = "../pre_train/g1/motion.pt"
-        # xml_path = "../../resources/robots/g1_description/warehouse_scene.xml"
         policy_path = "../unitree_rl_gym/deploy/pre_train/g1/motion.pt"
         xml_path = "../unitree_rl_gym/resources/robots/g1_description/warehouse_scene.xml"
 
@@ -175,17 +173,20 @@ if __name__ == "__main__":
     obs = np.zeros(num_obs, dtype=np.float32)
     counter = 0
 
+    # Load qp filter
+    with open(f"./exp_config/{exp_config_file}", "r") as f:
+        exp_config = yaml.load(f, Loader=yaml.FullLoader)
+        cbf = controlBarrierFunction(xml_path, exp_config)
+    moving_obs_cmd = cbf.moving_obs_cmd
+
     # Load robot model
-    m = mujoco.MjModel.from_xml_path(xml_path)
-    d = mujoco.MjData(m)
+    m = cbf.model
+    d = cbf.data
     m.opt.timestep = simulation_dt
 
     # Load policy
     policy = torch.jit.load(policy_path)
     print(f"✓ Policy loaded from {policy_path}\n")
-
-    # Load qp filter
-    cbf = controlBarrierFunction(m, d, xml_path)
 
     # Store data
     root_pos = []
@@ -193,8 +194,6 @@ if __name__ == "__main__":
     constraint_values = []
     max_recorded_step = 1e4
 
-    d.qpos[19:22] = np.array([7.0, 0.0, 0.0])
-    moving_obs_cmd = np.array([0.0, 0.0, 0.0])
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
@@ -304,14 +303,14 @@ if __name__ == "__main__":
                 # Update moving obstacles
                 if np.abs(d.qpos[20])>3:
                     moving_obs_cmd *= -1
-                d.qvel[18:21] = moving_obs_cmd
+                d.qvel[18:21] = cbf.moving_obs_cmd
     
     except KeyboardInterrupt:
         print("\nSimulation interrupted by user")
     finally:
         listener.stop()
         print("Keyboard listener stopped")
-        np.save("./data/composite_pos", np.array(root_pos))
-        np.save("./data/composite_cmds", np.array(mod_cmds))
-        np.save("./data/composite_values", np.array([constraint_values]))
+        np.save(cbf.pos_path, np.array(root_pos))
+        np.save(cbf.cmd_path, np.array(mod_cmds))
+        np.save(cbf.val_path, np.array([constraint_values]))
         print("Data saved")
