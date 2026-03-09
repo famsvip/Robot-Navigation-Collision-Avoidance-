@@ -18,3 +18,7 @@ theta_weight: 0.1
 slack_static_weight: 1000.0
 slack_moving_weight: 1000.0
 slack_workspace_weight: 1000.0
+
+# save_path
+pos_path: "./data/separated_pos_5"
+cmd_path: "./data/separated_cmds_5"

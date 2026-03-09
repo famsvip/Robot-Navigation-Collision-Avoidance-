@@ -15,6 +15,7 @@ class controlBarrierFunction():
     ):
 
         # experiment configuration parameters
+        robot_pos = exp_config["robot_pos"]
         target_body_origin = exp_config["target_pos"]
         shelf_pos = exp_config["shelf_pos"]
         moving_obs_pos = exp_config["moving_obs_pos"]
@@ -28,6 +29,9 @@ class controlBarrierFunction():
         self.slack_static = exp_config["slack_static_weight"]
         self.slack_moving = exp_config["slack_moving_weight"]
         self.slack_workspace = exp_config["slack_workspace_weight"]
+        # data save file path
+        self.pos_path = exp_config["pos_path"]
+        self.cmd_path = exp_config["cmd_path"]
 
         # xml modifications and data extraction
         tree = ET.parse(xml_path)
@@ -48,6 +52,7 @@ class controlBarrierFunction():
 
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
+        self.data.qpos[:3] = robot_pos
         self.data.qpos[19:22] = moving_obs_pos  
 
         # represent target as a bounding box and express center in world coordinates

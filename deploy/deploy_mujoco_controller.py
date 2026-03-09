@@ -196,11 +196,6 @@ if __name__ == "__main__":
 
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
-            # start position and orientation
-            # d.qpos[:2] = [3, -5]
-            # d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
-            # d.qpos[:2] = [8.0, 0]
-            # d.qpos[3:7] = [0, 0, 0, 1]
             
             start = time.time()
             buffer_index = 0
@@ -307,6 +302,6 @@ if __name__ == "__main__":
     finally:
         listener.stop()
         print("Keyboard listener stopped")
-        np.save("./data/separated_6", np.array(root_pos))
-        np.save("./data/separated_cmds_6", np.array(mod_cmds))
+        np.save(cbf.pos_path, np.array(root_pos))
+        np.save(cbf.cmd_path, np.array(mod_cmds))
         print("Data saved")

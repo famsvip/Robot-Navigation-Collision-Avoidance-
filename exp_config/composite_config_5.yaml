@@ -6,10 +6,14 @@ moving_obs_pos: [8.0, 5.0, 0.1]
 
 moving_obs_cmd: [0.0, 0.0, 0.0]
 
-# CBF-CLF inequality parameters
+# Sigmoid goal term parameters
+sigmoid_a: 0.25
+sigmoid_b: 1
+sigmoid_c: 0.5
+
+# CBF inequality parameters
 alpha_static: 0.2
 alpha_moving: 0.2
-gamma: 0.2
 
 # QP weight
 x_weight: 1.0
@@ -17,8 +21,8 @@ y_weight: 1.0
 theta_weight: 0.1
 slack_static_weight: 1000.0
 slack_moving_weight: 1000.0
-slack_workspace_weight: 200.0
 
 # save_path
-pos_path: "./data/separated_pos_1"
-cmd_path: "./data/separated_cmds_1"
+pos_path: "./data/composite_pos_5"
+cmd_path: "./data/composite_cmds_5"
+val_path: "./data/composite_vals_5"
