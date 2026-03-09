@@ -1,5 +1,6 @@
 # Maintain data type for xml and calculations
 
+robot_pos: [0.0, 0.0, 0.793]
 target_pos: "2.0 3.0 0.8"
 shelf_pos: "3.0 0.0 0.35"
 moving_obs_pos: [8.0, 5.0, 0.1]
