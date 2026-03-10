@@ -1,18 +1,18 @@
 # Maintain data type for xml and calculations
 
-robot_pos: [0.0, 0.0, 0.793]
+robot_pos: [1.0, 0.0, 0.793]
 target_pos: "2.8 0.0 0.8"
 shelf_pos: "3.0 0.0 0.35"
-moving_obs_pos: [8.0, 5.0, 0.1]
+moving_obs_pos: [1.5, -3.0, 0.0]
 
-moving_obs_cmd: [0.0, 0.0, 0.0]
+moving_obs_cmd: [0.0, 1.0, 0.0]
 
 # Sigmoid goal term parameters
 sigmoid_a: 0.175
-sigmoid_b: 1
+sigmoid_b: 2
 sigmoid_c: 0.5
 
-# CBF inequality parameters
+# CBF-CLF inequality parameters
 alpha_static: 0.2
 alpha_moving: 0.2
 
@@ -24,7 +24,7 @@ slack_static_weight: 1000.0
 slack_moving_weight: 1000.0
 
 # save_path
-pos_path: "./data/composite_pos_5"
-cmd_path: "./data/composite_cmds_5"
-val_path: "./data/composite_vals_5"
-col_path: "./data/composite_col_5"
+pos_path: "./data/composite_pos_moving_obs"
+cmd_path: "./data/composite_cmds_moving_obs"
+val_path: "./data/composite_vals_moving_obs"
+col_path: "./data/composite_col_moving_obs"
