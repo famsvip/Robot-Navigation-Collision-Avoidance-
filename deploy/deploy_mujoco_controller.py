@@ -7,43 +7,6 @@ import yaml
 import threading
 from pynput import keyboard
 from barrier_function_calc import controlBarrierFunction
-import matplotlib.pyplot as plt
-
-# Plotting setup
-plt.ion()
-
-max_points = 200  # rolling window size
-
-fig, ax = plt.subplots()
-plt.grid(True)
-
-x_data = np.arange(max_points)
-y1_data = np.zeros(max_points)
-y2_data = np.zeros(max_points)
-y3_data = np.zeros(max_points)
-y4_data = np.zeros(max_points)
-y5_data = np.zeros(max_points)
-
-line1, = ax.plot(x_data, y1_data, label="distance")
-line2, = ax.plot(x_data, y2_data, label="h_obs")
-line3, = ax.plot(x_data, y3_data, label="h_workspace")
-line4, = ax.plot(x_data, y4_data, label="grad h_obs", linestyle="dashed")
-line5, = ax.plot(x_data, y5_data, label="grad h_workspace", linestyle="dashed")
-
-ax.set_xlim(0, max_points)
-ax.set_ylim(-0.5, 1.5)
-ax.set_title("CBF Values over Time")
-ax.set_xlabel("Time Steps")
-ax.set_ylabel("h values")
-plt.legend(
-    loc='upper center', # Location
-    ncol=2,             # Two columns
-    fontsize='medium',  # Font size
-    frameon=True,       # Show frame
-    shadow=True,        # Add shadow
-)
-
-plt.show(block=False)
 
 def get_gravity_orientation(quaternion):
     qw = quaternion[0]
@@ -74,6 +37,28 @@ def root_yaw(quat):
     yaw_angle = np.arctan2(num, denom)
 
     return yaw_angle
+
+def contact_check(m, d, obs_frc):
+    contact_indices = np.argwhere(d.contact.geom1 == 4).flatten()
+    if contact_indices.size != 0:
+        for i in contact_indices:
+            force = np.zeros(6)
+            mujoco.mj_contactForce(m, d, i, force)
+            obs_frc.append(np.linalg.norm(force[:3]))
+        
+        print("Shelf contact detected")
+        print("obs_frc:", obs_frc)  # force[:3] = force, force[3:] = torque
+    return None
+
+# def contact_check(m, d, obs_frc):
+#     contact_indices = np.argwhere(d.contact.geom1==4)
+#     if contact_indices.size != 0:
+#             obs_frc_address = [d.contact.efc_address[i] for i in contact_indices]
+#             for address in obs_frc_address:
+#                 obs_frc.append(d.efc_force[address:])
+#             print("Shelf contact detected")
+#             print(obs_frc)
+#     return None
 
 # Global command variable
 cmd = None
@@ -123,7 +108,6 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("exp_config", type=str, help="config file name in the config folder")
-    parser.add_argument("--plot", action="store_true", default=False, help="turn on or off plotting")
     args = parser.parse_args()
     exp_config_file = args.exp_config
     
@@ -191,6 +175,7 @@ if __name__ == "__main__":
     # Store data
     root_pos = []
     mod_cmds = []
+    obs_frc = []
     constraint_values = []
     max_recorded_step = 1e4
 
@@ -215,8 +200,8 @@ if __name__ == "__main__":
                     
                 counter += 1
                 if counter % control_decimation == 0:
-                    # Get current cmd value (thread-safe)
 
+                    # Get current cmd value (thread-safe)
                     with cmd_lock:
                         current_cmd = cmd.copy()
                         current_cmd = [1.0, 0.0, 0.0]
@@ -225,44 +210,19 @@ if __name__ == "__main__":
                     if counter < max_recorded_step:
                         mod_cmds.append(modified_cmd)
                         constraint_values.append([cbf.h_static_obs, cbf.h_workspace, np.linalg.norm(cbf.grad_h_static_obs), np.linalg.norm(cbf.grad_h_workspace), cbf.static_slack])
+                        contact_check(m, d, obs_frc)
+
                     print("Simulation Count:", counter)
-                    
                     print("original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
-                    print("static slack:", static_slack)
-                    print("moving slack:", moving_slack)
-                    print("static h:", cbf.h_static_obs)
-                    print("workspace h:", cbf.h_workspace)
-                    print("composite h:", cbf.h_static_obs + cbf.h_workspace)
-                    print("grad static h:", cbf.grad_h_static_obs)
-                    print("grad workspace h:", cbf.grad_h_workspace)
-                    print("grad composite h:", cbf.grad_h_static_obs + cbf.grad_h_moving_obs)
+                    # print("static slack:", static_slack)
+                    # print("moving slack:", moving_slack)
+                    # print("static h:", cbf.h_static_obs)
+                    # print("workspace h:", cbf.h_workspace)
+                    # print("composite h:", cbf.h_static_obs + cbf.h_workspace)
+                    # print("grad static h:", cbf.grad_h_static_obs)
+                    # print("grad workspace h:", cbf.grad_h_workspace)
+                    # print("grad composite h:", cbf.grad_h_static_obs + cbf.grad_h_moving_obs)
 
-
-                    if args.plot:
-                        # Insert into rolling buffer
-                        y1_data[buffer_index] = cbf.workspace_target_distance
-                        y2_data[buffer_index] = cbf.h_static_obs
-                        y3_data[buffer_index] = cbf.h_workspace
-                        y4_data[buffer_index] = np.linalg.norm(cbf.grad_h_static_obs)
-                        y5_data[buffer_index] = np.linalg.norm(cbf.grad_h_workspace)
-
-                        buffer_index = (buffer_index + 1) % max_points
-
-                        # Roll array so newest value appears at right side
-                        rolled1 = np.roll(y1_data, -buffer_index)
-                        rolled2 = np.roll(y2_data, -buffer_index)
-                        rolled3 = np.roll(y3_data, -buffer_index)
-                        rolled4 = np.roll(y4_data, -buffer_index)
-                        rolled5 = np.roll(y5_data, -buffer_index)
-
-                        line1.set_ydata(rolled1)
-                        line2.set_ydata(rolled2)
-                        line3.set_ydata(rolled3)
-                        line4.set_ydata(rolled4)
-                        line5.set_ydata(rolled5)
-                        
-                        plt.pause(0.001)
-                    
                     # Create observation
                     qj = d.qpos[7:19]
                     dqj = d.qvel[6:18]
@@ -313,4 +273,6 @@ if __name__ == "__main__":
         np.save(cbf.pos_path, np.array(root_pos))
         np.save(cbf.cmd_path, np.array(mod_cmds))
         np.save(cbf.val_path, np.array([constraint_values]))
+        np.save(cbf.col_path, np.array(obs_frc))
         print("Data saved")
+        print(cbf.target_status)

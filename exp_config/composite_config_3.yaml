@@ -1,14 +1,14 @@
 # Maintain data type for xml and calculations
 
 robot_pos: [0.0, 0.0, 0.793]
-target_pos: "2.85 0.0 0.8"
+target_pos: "2.8 0.0 0.8"
 shelf_pos: "3.0 0.0 0.35"
 moving_obs_pos: [8.0, 5.0, 0.1]
 
 moving_obs_cmd: [0.0, 0.0, 0.0]
 
 # Sigmoid goal term parameters
-sigmoid_a: 0.25
+sigmoid_a: 0.175
 sigmoid_b: 2
 sigmoid_c: 0.5
 
@@ -27,3 +27,4 @@ slack_moving_weight: 1000.0
 pos_path: "./data/composite_pos_3"
 cmd_path: "./data/composite_cmds_3"
 val_path: "./data/composite_vals_3"
+col_path: "./data/composite_col_3"
