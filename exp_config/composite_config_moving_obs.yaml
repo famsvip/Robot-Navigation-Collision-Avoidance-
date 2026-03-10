@@ -12,7 +12,7 @@ sigmoid_a: 0.175
 sigmoid_b: 2
 sigmoid_c: 0.5
 
-# CBF-CLF inequality parameters
+# CBF inequality parameters
 alpha_static: 0.2
 alpha_moving: 0.2
 
