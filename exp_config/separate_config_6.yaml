@@ -1,7 +1,7 @@
 # Maintain data type for xml and calculations
 
 robot_pos: [0.0, 0.0, 0.793]
-target_pos: "2.85 0.0 0.8"
+target_pos: "2.8 0.0 0.8"
 shelf_pos: "3.0 0.0 0.35"
 moving_obs_pos: [8.0, 5.0, 0.1]
 
@@ -23,3 +23,4 @@ slack_workspace_weight: 1000.0
 # save_path
 pos_path: "./data/separated_pos_6"
 cmd_path: "./data/separated_cmds_6"
+col_path: "./data/separated_col_6"

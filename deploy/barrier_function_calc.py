@@ -32,6 +32,7 @@ class controlBarrierFunction():
         # data save file path
         self.pos_path = exp_config["pos_path"]
         self.cmd_path = exp_config["cmd_path"]
+        self.col_path = exp_config["col_path"]
 
         # xml modifications and data extraction
         tree = ET.parse(xml_path)
@@ -84,6 +85,7 @@ class controlBarrierFunction():
         self.grad_h_static_obs = 0.0
         self.grad_h_moving_obs = 0.0
         self.grad_h_workspace = 0.0
+        self.target_status = False
 
 
     def static_obs_calc(self, theta):
@@ -175,6 +177,7 @@ class controlBarrierFunction():
         signed_distances = A @ rotated_target + b
         if np.all(signed_distances<0):
             print("TARGET ACQUIRED")
+            self.target_status = True
 
         return self.h_workspace, self.grad_h_workspace
     
