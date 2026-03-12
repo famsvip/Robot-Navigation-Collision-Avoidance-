@@ -27,3 +27,4 @@ slack_moving_weight: 1000.0
 pos_path: "./data/composite_pos_static_obs"
 cmd_path: "./data/composite_cmds_static_obs"
 val_path: "./data/composite_vals_static_obs"
+col_path: "./data/composite_col_static_obs"

@@ -182,10 +182,8 @@ if __name__ == "__main__":
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
-            # d.qpos[:2] = [8.0, 0]
-            # d.qpos[3:7] = [0.7071, 0, 0, 0.7071]
-            # d.qpos[3:7] = [0, 0, 0, 1]
-            
+            # d.qpos[:2] = [4.0, 0]
+
             start = time.time()
             buffer_index = 0
             while viewer.is_running() and time.time() - start < simulation_duration:
@@ -212,13 +210,12 @@ if __name__ == "__main__":
                         constraint_values.append([cbf.h_static_obs, cbf.h_workspace, np.linalg.norm(cbf.grad_h_static_obs), np.linalg.norm(cbf.grad_h_workspace), cbf.static_slack])
                         contact_check(m, d, obs_frc)
 
-                    print("Simulation Count:", counter)
-                    print("original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
+                    print("Simulation count:", counter, "|| original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
                     # print("static slack:", static_slack)
                     # print("moving slack:", moving_slack)
                     # print("static h:", cbf.h_static_obs)
                     # print("workspace h:", cbf.h_workspace)
-                    # print("composite h:", cbf.h_static_obs + cbf.h_workspace)
+                    print("composite h:", cbf.h_static_obs + cbf.h_workspace)
                     # print("grad static h:", cbf.grad_h_static_obs)
                     # print("grad workspace h:", cbf.grad_h_workspace)
                     # print("grad composite h:", cbf.grad_h_static_obs + cbf.grad_h_moving_obs)

@@ -84,6 +84,8 @@ class controlBarrierFunction():
         self.workspace_target_distance = 0.0
         self.h_static_obs = 0.0
         self.h_moving_obs = 0.0
+        self.h_comp_static = 0.0
+        self.h_comp_moving = 0.0
         self.h_workspace = 0.0
         self.grad_h_static_obs = 0.0
         self.grad_h_moving_obs = 0.0
@@ -189,26 +191,28 @@ class controlBarrierFunction():
         return self.h_workspace, self.grad_h_workspace
     
     def composite_calc(self, theta, mode):
-        '''mode 0 for static calculations, else for moving obstacle'''
-        if mode:
+        '''mode 0 for static calculations, 1 for moving obstacle'''
+        if mode == 0:
             h_obs, grad_h_obs = self.static_obs_calc(theta)
             dh_dt = 0
             h_work, grad_h_work = self.workspace_calc(self.sigmoid_a, self.sigmoid_b, self.sigmoid_c, theta)
 
             h_composite = h_obs + h_work
             grad_h = grad_h_obs + grad_h_work
+            self.h_comp_static = h_composite
 
             # print("h static_obstacle:", h_obs)
             # print("h workspace:", h_work)
             # print("static obstacle grad:", grad_h_obs)
             # print("workspace grad:", grad_h_work)
             # print("h static comp:", h_composite)
-        else:
+        elif mode == 1:
             h_obs, grad_h_obs, dh_dt = self.moving_obs_calc(theta)
-            h_work, grad_h_work = self.workspace_calc(0.5, 2, 0.5, theta)
+            h_work, grad_h_work = self.workspace_calc(self.sigmoid_a, self.sigmoid_b, self.sigmoid_c, theta)
 
             h_composite = h_obs + h_work
             grad_h = grad_h_obs + grad_h_work
+            self.h_comp_moving = h_composite
 
             # print("h_moving_obstacle:", h_obs)
             # print("moving obstacle grad:", grad_h_obs)
