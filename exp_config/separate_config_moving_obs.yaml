@@ -18,7 +18,7 @@ y_weight: 1.0
 theta_weight: 0.1
 slack_static_weight: 200.0
 slack_moving_weight: 1000.0
-slack_workspace_weight: 1000.0
+slack_workspace_weight: 1.0
 
 # save_path
 pos_path: "./data/separated_pos_moving_obs"
