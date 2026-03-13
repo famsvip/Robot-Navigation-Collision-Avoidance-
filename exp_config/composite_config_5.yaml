@@ -9,7 +9,7 @@ moving_obs_cmd: [0.0, 0.0, 0.0]
 
 # Sigmoid goal term parameters
 sigmoid_a: 0.175
-sigmoid_b: 1
+sigmoid_b: 4.0
 sigmoid_c: 0.5
 
 # CBF inequality parameters
