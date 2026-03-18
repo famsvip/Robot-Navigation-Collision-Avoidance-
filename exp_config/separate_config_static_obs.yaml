@@ -9,12 +9,12 @@ moving_obs_cmd: [0.0, 0.0, 0.0]
 # CBF-CLF inequality parameters
 alpha_static: 0.2
 alpha_moving: 0.2
-gamma: 0.2
+gamma: 0.5
 
 # QP weight
 x_weight: 1.0
 y_weight: 1.0
-theta_weight: 0.1
+theta_weight: 0.5
 slack_static_weight: 1000.0
 slack_moving_weight: 1000.0
 slack_workspace_weight: 200.0
@@ -22,3 +22,4 @@ slack_workspace_weight: 200.0
 # save_path
 pos_path: "./data/separated_pos_static_obs"
 cmd_path: "./data/separated_cmds_static_obs"
+col_path: "./data/separated_col_static_obs"
