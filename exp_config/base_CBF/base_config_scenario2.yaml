@@ -1,26 +1,25 @@
 # Maintain data type for xml and calculations
 
 robot_pos: [0.0, 0.0, 0.793]
-target_pos: "2.75 1.25 0.8"
+target_pos: "2.0 3.0 0.8"
 shelf_pos: "3.0 0.0 0.35"
 moving_obs_pos: [8.0, 5.0, 0.1]
 moving_obs_cmd: [0.0, 0.0, 0.0]
 
-# CBF-CLF inequality parameters
+# CBF inequality parameters
 alpha_static: 0.2
 alpha_moving: 0.2
-gamma: 0.5
 
 # QP weight
 x_weight: 1.0
-y_weight: 3.0
-theta_weight: 0.1
+y_weight: 1.0
+theta_weight: 0.5
 slack_static_weight: 1000000.0
 slack_moving_weight: 1000.0
 slack_workspace_weight: 200.0
 
 # save_path
-pos_path: "./data/CBF-CLF/separated_pos_scenario2"
-cmd_path: "./data/CBF-CLF/separated_cmds_scenario2"
-val_path: "./data/CBF-CLF/separated_vals_scenario2"
-col_path: "./data/CBF-CLF/separated_col_scenario2"
+pos_path: "./data/base_CBF/base_pos_scenario2"
+cmd_path: "./data/base_CBF/base_cmds_scenario2"
+val_path: "./data/base_CBF/base_vals_scenario2"
+col_path: "./data/base_CBF/base_col_scenario2"
