@@ -207,14 +207,6 @@ class controlBarrierFunction():
         moving_slack = solution[4]
         workspace_slack = solution[5]
 
-        # print("h static:", h_static)
-        # print("h moving:", h_moving)
-        # print("h workspace:", h_workspace)
-        # print("static obstacle grad:", grad_h_static)
-        # print("moving obstacle grad:", grad_h_moving)
-        # print("workspace grad:", grad_h_workspace)
-        # print("==================================================================")
-
         return u, static_slack, moving_slack, workspace_slack
 
         

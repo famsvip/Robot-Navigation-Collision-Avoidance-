@@ -167,6 +167,7 @@ if __name__ == "__main__":
     root_pos = []
     mod_cmds = []
     obs_frc = []
+    constraint_values = []
     max_recorded_step = 1e4
 
     try:
@@ -181,30 +182,29 @@ if __name__ == "__main__":
                 mujoco.mj_step(m, d)
 
                 yaw_angle = root_yaw(d.qpos[3:7])
-                if counter < max_recorded_step:
+
+                 # Get current cmd value (thread-safe)
+                with cmd_lock:
+                    current_cmd = cmd.copy()
+                    current_cmd = [1.0, 0.0, 0.0]
+
+                modified_cmd, static_slack, moving_slack, warehouse_slack = cbf.qp_filter(current_cmd, yaw_angle)
+                if counter < max_recorded_step and cbf.target_status != True:
                     root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
+                    mod_cmds.append(modified_cmd)
+                    print(d.qvel[:2])
+                    terminal_vel = np.linalg.norm(d.qvel[:2])
+                    constraint_values.append([cbf.h_static_obs, cbf.h_static_obs, cbf.h_workspace, np.linalg.norm(cbf.grad_h_static_obs), np.linalg.norm(cbf.grad_h_workspace), static_slack, terminal_vel])
+                    contact_check(m, d, obs_frc)
+                    print("Recording")
+
+                print("Simulation count:", counter, "|| original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
+                print("static h:", cbf.h_static_obs)
+                print("static slack:", static_slack)
+                print("grad_h_static:", cbf.grad_h_static_obs)
               
                 counter += 1
                 if counter % control_decimation == 0:
-                    # Get current cmd value (thread-safe)
-                    with cmd_lock:
-                        current_cmd = cmd.copy()
-                        current_cmd = [1.0, 0.0, 0.0]
-
-                    modified_cmd, static_slack, moving_slack, workspace_slack = cbf.qp_filter(current_cmd, yaw_angle)
-                    if counter < max_recorded_step:
-                        mod_cmds.append(modified_cmd)
-                        contact_check(m, d, obs_frc)
-
-                    print("Simulation Count:", counter)
-                    print("original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
-                    # print("static slack:", static_slack)
-                    # print("moving slack:", moving_slack)
-                    # print("workspace slack:", workspace_slack)
-                    # print("static h:", cbf.h_static_obs)
-                    # print("workspace h:", cbf.h_workspace)
-                    # print("grad static h:", cbf.grad_h_static_obs)
-                    # print("grad workspace h:", cbf.grad_h_workspace)
                     
                     # Create observation
                     qj = d.qpos[7:19]
