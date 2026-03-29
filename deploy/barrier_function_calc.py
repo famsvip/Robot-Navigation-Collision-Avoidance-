@@ -22,7 +22,6 @@ class controlBarrierFunction():
         self.moving_obs_cmd = np.array(exp_config["moving_obs_cmd"])
         self.alpha_static = exp_config["alpha_static"]
         self.alpha_moving = exp_config["alpha_moving"]
-        self.gamma = exp_config["gamma"]
         self.x_weight = exp_config["x_weight"]
         self.y_weight = exp_config["y_weight"]
         self.theta_weight = exp_config["theta_weight"]
@@ -186,27 +185,23 @@ class controlBarrierFunction():
 
         h_static, grad_h_static = self.static_obs_calc(theta)
         h_moving, grad_h_moving, dh_dt = self.moving_obs_calc(theta)
-        h_workspace, grad_h_workspace = self.workspace_calc(theta)
-        grad_h_static = np.concatenate((grad_h_static, [1], [0], [0]))
-        grad_h_moving = np.concatenate((grad_h_moving, [0], [1], [0]))
-        grad_h_workspace = np.concatenate((grad_h_workspace, [0], [0], [-1]))
+        grad_h_static = np.concatenate((grad_h_static, [1], [0]))
+        grad_h_moving = np.concatenate((grad_h_moving, [0], [1]))
         
         # QP solver parameters
-        P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving, self.slack_workspace])
-        q = -P @ np.concatenate((u_d, [0.0], [0.0], [0.0]))
-        G = np.vstack((-grad_h_static, -grad_h_moving, grad_h_workspace))
+        P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving])
+        q = -P @ np.concatenate((u_d, [0.0], [0.0]))
+        G = np.vstack((-grad_h_static, -grad_h_moving))
         h = np.array([[self.alpha_static * h_static],
-                      [self.alpha_moving * h_moving + dh_dt],
-                      [-self.gamma * h_workspace]])
-        lb = 1.0 * np.array([-1,-1,-1, 0, 0, 0])
-        ub = 1.0 * np.array([1, 1, 1, 10, 10, 10])
+                      [self.alpha_moving * h_moving + dh_dt]])
+        lb = 1.0 * np.array([-1,-1,-1, 0, 0])
+        ub = 1.0 * np.array([1, 1, 1, 10, 10])
         # print("Gu <", h)
         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
         u = np.round(solution[:3], 2)
         static_slack = solution[3]
         moving_slack = solution[4]
-        workspace_slack = solution[5]
 
-        return u, static_slack, moving_slack, workspace_slack
+        return u, static_slack, moving_slack
 
         
