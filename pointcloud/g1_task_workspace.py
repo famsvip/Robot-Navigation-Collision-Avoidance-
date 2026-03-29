@@ -36,6 +36,7 @@ if args.generate:
     N = 100000 # number of samples
     ee_points = []
     manipulability_scores = []
+    p_refs = np.empty((1,3), dtype=np.float64)
     for n in range(N):
         for name in joint_names:
             # get the joint limit range
@@ -76,14 +77,24 @@ if args.generate:
             ee_points.append(rpalm_pos)
             manipulability_scores.append(r_manipulability)
 
+        # calculate the weighted reference point
+        points = np.array(ee_points)
+        scores = np.array(manipulability_scores)
+        weighted_ref = np.sum(points * scores[:, None], axis=0)/np.sum(scores)
+        p_refs = np.vstack((p_refs, [weighted_ref]))
+        print("Count:", n, "||", weighted_ref)
+
         v.sync()
         time.sleep(0.01)
 
     v.close()
     np.save("./pointcloud/workspace_pointcloud_manipulate", np.array(ee_points))
     np.save("./pointcloud/workspace_manipulate_scores", np.array(manipulability_scores))
+    np.save("./pointcloud/workspace_weighted_point", p_refs)
     print(np.array(ee_points).shape)
     print(np.array(manipulability_scores).shape)
+
+print("Done")
 
 if args.load:
     points = np.load("./pointcloud/workspace_pointcloud_manipulate.npy")
@@ -104,43 +115,3 @@ if args.load:
     ax.set_zlabel('Z Label')
     
     plt.show()
-
-
-
-# v.close()
-# ee_points = np.array(ee_points)
-# print(ee_points.shape)
-
-# pcd = o3d.geometry.PointCloud()
-# pcd.points = o3d.utility.Vector3dVector(ee_points)
-# voxel_size = 0.01
-# voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size)
-# o3d.visualization.draw_geometries([voxel_grid])
-
-# np.save("./workspace_point_cloud_filtered", ee_points)
-
-
-# ### Check max forward position
-# v = mujoco.viewer.launch_passive(model, data)
-
-# shoulder_joint = -1.57
-# joint_id = model.joint("left_shoulder_pitch_joint").id
-# joint_q = model.jnt_qposadr[joint_id]
-# data.qpos[joint_q] = shoulder_joint
-
-# elbow_joint = 1.57
-# joint_id = model.joint("left_elbow_joint").id
-# joint_q = model.jnt_qposadr[joint_id]
-# data.qpos[joint_q] = elbow_joint
-
-# mujoco.mj_forward(model, data)
-
-# root_pos = data.qpos[:3].copy()
-# lpalm_pos = data.site_xpos[lpalm_id].copy()
-
-
-# lpalm_pos -= root_pos
-# print(lpalm_pos)
-
-# while True:
-#     v.sync()

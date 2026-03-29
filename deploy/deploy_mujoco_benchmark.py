@@ -50,59 +50,9 @@ def contact_check(m, d, obs_frc):
         print("obs_frc:", obs_frc)  # force[:3] = force, force[3:] = torque
     return None
 
-# def contact_check(m, d, obs_frc):
-#     contact_indices = np.argwhere(d.contact.geom1==4)
-#     if contact_indices.size != 0:
-#             obs_frc_address = [d.contact.efc_address[i] for i in contact_indices]
-#             for address in obs_frc_address:
-#                 obs_frc.append(d.efc_force[address:])
-#             print("Shelf contact detected")
-#             print(obs_frc)
-#     return None
-
 # Global command variable
 cmd = None
 cmd_lock = threading.Lock()
-
-def on_press(key):
-    """Background keyboard listener callback"""
-    global cmd
-    
-    try:
-        key_char = key.char
-    except AttributeError:
-        return
-    
-    with cmd_lock:
-        if cmd is None:
-            return
-            
-        step = 0.1
-        
-        if key_char == 'w':
-            cmd[0] = min(cmd[0] + step, 1.0)
-            print(f"CMD: [{cmd[0]:.2f}, {cmd[1]:.2f}, {cmd[2]:.2f}]", flush=True)
-        elif key_char == 's':
-            cmd[0] = max(cmd[0] - step, -1.0)
-            print(f"CMD: [{cmd[0]:.2f}, {cmd[1]:.2f}, {cmd[2]:.2f}]", flush=True)
-        elif key_char == 'a':
-            cmd[1] = min(cmd[1] + step, 1.0)
-            print(f"CMD: [{cmd[0]:.2f}, {cmd[1]:.2f}, {cmd[2]:.2f}]", flush=True)
-        elif key_char == 'd':
-            cmd[1] = max(cmd[1] - step, -1.0)
-            print(f"CMD: [{cmd[0]:.2f}, {cmd[1]:.2f}, {cmd[2]:.2f}]", flush=True)
-        elif key_char == 'q':
-            cmd[2] = min(cmd[2] + step, 1.0)
-            print(f"CMD: [{cmd[0]:.2f}, {cmd[1]:.2f}, {cmd[2]:.2f}]", flush=True)
-        elif key_char == 'e':
-            cmd[2] = max(cmd[2] - step, -1.0)
-            print(f"CMD: [{cmd[0]:.2f}, {cmd[1]:.2f}, {cmd[2]:.2f}]", flush=True)
-        elif key_char == ' ':
-            cmd[:] = 0.0
-            print(f"CMD: STOP", flush=True)
-        elif key_char == 'r':
-            cmd[:] = [0.0, 0.0, 0.0]
-            print(f"CMD: RESET", flush=True)
 
 if __name__ == "__main__":
     import argparse
@@ -136,21 +86,6 @@ if __name__ == "__main__":
         # Initialize global cmd
         cmd = np.array(config["cmd_init"], dtype=np.float32)
 
-    # Print controls
-    print("\n" + "="*60)
-    print("KEYBOARD CONTROLS (background listener):")
-    print("  W/S     - Increase/Decrease forward velocity")
-    print("  A/D     - Increase/Decrease lateral velocity") 
-    print("  Q/E     - Increase/Decrease yaw rate")
-    print("  SPACE   - Stop all motion")
-    print("  R       - Reset to zero")
-    print("="*60 + "\n")
-
-    # Start background keyboard listener
-    listener = keyboard.Listener(on_press=on_press)
-    listener.start()
-    print("✓ Keyboard listener started in background")
-
     # Define context variables
     action = np.zeros(num_actions, dtype=np.float32)
     target_dof_pos = default_angles.copy()
@@ -177,12 +112,12 @@ if __name__ == "__main__":
     mod_cmds = []
     obs_frc = []
     constraint_values = []
+    actual = []
     max_recorded_step = 1e4
-
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
             # start position and orientation
-            # d.qpos[:2] = [4.0, 0]
+            d.qpos[:2] = [10.0, 0.0]
 
             start = time.time()
             buffer_index = 0
@@ -191,32 +126,28 @@ if __name__ == "__main__":
                 tau = pd_control(target_dof_pos, d.qpos[7:19], kps, np.zeros_like(kds), d.qvel[6:18], kds)
                 d.ctrl[:] = tau
                 mujoco.mj_step(m, d)
-
-                yaw_angle = root_yaw(d.qpos[3:7])
-
-                 # Get current cmd value (thread-safe)
-                with cmd_lock:
-                    current_cmd = cmd.copy()
-                    current_cmd = [1.0, 0.0, 0.0]
-
-                modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
-                if counter < max_recorded_step and cbf.target_status != True:
-                    root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
-                    mod_cmds.append(modified_cmd)
-                    print(d.qvel[:2])
-                    terminal_vel = np.linalg.norm(d.qvel[:2])
-                    constraint_values.append([cbf.h_comp_static, cbf.h_static_obs, cbf.h_workspace, np.linalg.norm(cbf.grad_h_static_obs), np.linalg.norm(cbf.grad_h_workspace), cbf.static_slack, terminal_vel])
-                    contact_check(m, d, obs_frc)
-                    print("Recording")
-
-                print("Simulation count:", counter, "|| original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
-                print("composite h:", cbf.h_comp_static)
-                print("static h:", cbf.h_static_obs)
-                print("static slack:", static_slack)
-                print("grad_h_static:", cbf.grad_h_static_obs)
-
+                    
                 counter += 1
                 if counter % control_decimation == 0:
+
+                    # Get current cmd value (thread-safe)
+                    with cmd_lock:
+                        current_cmd = cmd.copy()
+                        current_cmd = [0.0, 0.0, 1.0]
+
+                    if counter < max_recorded_step:
+                        psi = root_yaw(d.qpos[3:7])
+                        R_world_to_body = np.array([
+                                            [np.cos(psi), np.sin(psi), 0],
+                                            [-np.sin(psi), np.cos(psi), 0],
+                                            [0, 0, 1]
+                                            ])
+                        local_vel = R_world_to_body @ d.qvel[:3]
+                        val = np.concatenate([local_vel[:2], [d.qvel[5]]])
+                        actual.append(val)
+                        print("Count:", counter, "|| Nominal:", current_cmd, "Recorded:", val)
+                    else:
+                        print("Recording done")
 
                     # Create observation
                     qj = d.qpos[7:19]
@@ -237,7 +168,7 @@ if __name__ == "__main__":
 
                     obs[:3] = omega
                     obs[3:6] = gravity_orientation
-                    obs[6:9] = modified_cmd * cmd_scale
+                    obs[6:9] = current_cmd * cmd_scale
                     obs[9 : 9 + num_actions] = qj
                     obs[9 + num_actions : 9 + 2 * num_actions] = dqj
                     obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
@@ -263,11 +194,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nSimulation interrupted by user")
     finally:
-        listener.stop()
-        print("Keyboard listener stopped")
-        np.save(cbf.pos_path, np.array(root_pos))
-        np.save(cbf.cmd_path, np.array(mod_cmds))
-        np.save(cbf.val_path, np.array([constraint_values]))
-        np.save(cbf.col_path, np.array(obs_frc))
+        np.save("./data/rotating_benchmark", np.array(actual))
         print("Data saved")
-        print(cbf.target_status)

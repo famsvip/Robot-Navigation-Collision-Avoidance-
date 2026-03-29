@@ -185,7 +185,6 @@ class controlBarrierFunction():
         # print("Unscaled grad:", grad_d)
         signed_distances = A @ rotated_target + b
         if np.all(signed_distances<0):
-            print("TARGET ACQUIRED")
             self.target_status = True
 
         return self.h_workspace, self.grad_h_workspace
@@ -223,26 +222,32 @@ class controlBarrierFunction():
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
 
-        h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
-        h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
-        h_grad_static = np.concatenate((h_grad_static, [1], [0]))
-        h_grad_moving = np.concatenate((h_grad_moving, [0], [1]))
-        
-        # QP solver parameters
-        P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving])
-        q = -P @ np.concatenate((u_d, [0.0], [0.0]))
-        G = -np.vstack((h_grad_static, h_grad_moving))
-        h = np.array([[self.alpha_static * h_comp_static + h_dot_static],
-                      [self.alpha_moving * h_comp_moving + h_dot_moving]])
-        lb = 1.0 * np.array([-1,-1,-1, 0, 0])
-        ub = 1.0 * np.array([1, 1, 1, 10, 10])
-        # print("Gu <", h)
-        solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
+        if self.target_status:
+            print("Target Acquired")
+            u = np.zeros(3)
+            self.static_slack = 0
+            self.moving_slack
+        else:
+            h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
+            h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
+            h_grad_static = np.concatenate((h_grad_static, [1], [0]))
+            h_grad_moving = np.concatenate((h_grad_moving, [0], [1]))
+            
+            # QP solver parameters
+            P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving])
+            q = -P @ np.concatenate((u_d, [0.0], [0.0]))
+            G = -np.vstack((h_grad_static, h_grad_moving))
+            h = np.array([[self.alpha_static * h_comp_static + h_dot_static],
+                        [self.alpha_moving * h_comp_moving + h_dot_moving]])
+            lb = 1.0 * np.array([-1,-1,-1, 0, 0])
+            ub = 1.0 * np.array([1, 1, 1, 10, 10])
+            # print("Gu <", h)
+            solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
 
-        u = np.round(solution[:3], 2)
-        self.static_slack = solution[3]
-        self.moving_slack = solution[4]
-        # print("==================================================================")
+            u = np.round(solution[:3], 2)
+            self.static_slack = solution[3]
+            self.moving_slack = solution[4]
+            # print("==================================================================")
 
         return u, self.static_slack, self.moving_slack
 
