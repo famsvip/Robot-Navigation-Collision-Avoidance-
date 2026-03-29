@@ -50,16 +50,6 @@ def contact_check(m, d, obs_frc):
         print("obs_frc:", obs_frc)  # force[:3] = force, force[3:] = torque
     return None
 
-# def contact_check(m, d, obs_frc):
-#     contact_indices = np.argwhere(d.contact.geom1==4)
-#     if contact_indices.size != 0:
-#             obs_frc_address = [d.contact.efc_address[i] for i in contact_indices]
-#             for address in obs_frc_address:
-#                 obs_frc.append(d.efc_force[address:])
-#             print("Shelf contact detected")
-#             print(obs_frc)
-#     return None
-
 # Global command variable
 cmd = None
 cmd_lock = threading.Lock()
@@ -181,8 +171,6 @@ if __name__ == "__main__":
 
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
-            # start position and orientation
-            # d.qpos[:2] = [4.0, 0]
 
             start = time.time()
             buffer_index = 0
@@ -200,6 +188,9 @@ if __name__ == "__main__":
                     current_cmd = [1.0, 0.0, 0.0]
 
                 modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
+                if cbf.workspace_target_distance < 1.0:
+                    print("Switched")
+                    modified_cmd, static_slack, moving_slack = cbf.qp_filter_task(current_cmd, yaw_angle)
                 if counter < max_recorded_step and cbf.target_status != True:
                     root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
                     mod_cmds.append(modified_cmd)
@@ -212,6 +203,7 @@ if __name__ == "__main__":
                 print("Simulation count:", counter, "|| original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
                 print("composite h:", cbf.h_comp_static)
                 print("static h:", cbf.h_static_obs)
+                print("workspace h:", cbf.h_workspace)
                 print("static slack:", static_slack)
                 print("grad_h_static:", cbf.grad_h_static_obs)
 

@@ -28,9 +28,6 @@ class controlBarrierFunction():
         self.theta_weight = exp_config["theta_weight"]
         self.slack_static = exp_config["slack_static_weight"]
         self.slack_moving = exp_config["slack_moving_weight"]
-        self.sigmoid_a = exp_config["sigmoid_a"]
-        self.sigmoid_b = exp_config["sigmoid_b"]
-        self.sigmoid_c = exp_config["sigmoid_c"]
         # data storage paths
         self.pos_path = exp_config["pos_path"]
         self.cmd_path = exp_config["cmd_path"]
@@ -154,7 +151,7 @@ class controlBarrierFunction():
 
         return self.h_moving_obs, self.grad_h_moving_obs, dh_dt
 
-    def workspace_calc(self, alpha, beta, gamma, theta):
+    def workspace_calc(self, theta):
         rel_target_pos = self.target_pos - self.data.qpos[:3]
         A = self.workspace_A.copy()
         b = self.workspace_b.copy()
@@ -170,17 +167,14 @@ class controlBarrierFunction():
             [0, 0, 0]
             ])
         rotated_target = R_world_to_body @ rel_target_pos
+        self.rotated_target = rotated_target
         self.workspace_target_distance = np.linalg.norm(rotated_target - self.workspace_center)
-        sigmoid =  1/(1+np.exp(beta*(self.workspace_target_distance - gamma)))
-        self.h_workspace = alpha * sigmoid
-        # print("Rotated Target:", rotated_target)
-        # print("Workspace Center:", self.workspace_center)
-        # print("Vector from center to target:", rotated_target - self.workspace_center)
+        self.h_workspace = -self.workspace_target_distance + 0.1
         
         grad_d_wrt_pos = -(rotated_target - self.workspace_center)/self.workspace_target_distance
         grad_d_wrt_theta = -grad_d_wrt_pos @ grad_R_wrt_theta @ rel_target_pos
         grad_d = np.concatenate((grad_d_wrt_pos[:2], [grad_d_wrt_theta]))
-        self.grad_h_workspace = -alpha * beta * sigmoid * (1-sigmoid) * grad_d
+        self.grad_h_workspace = -grad_d
 
         # print("Unscaled grad:", grad_d)
         signed_distances = A @ rotated_target + b
@@ -190,37 +184,33 @@ class controlBarrierFunction():
         return self.h_workspace, self.grad_h_workspace
     
     def composite_calc(self, theta, mode):
-        '''mode 0 for static calculations, 1 for moving obstacle'''
+        '''mode 0 for static calculations, 1 for moving obstacle, 2 for task'''
         if mode == 0:
             h_obs, grad_h_obs = self.static_obs_calc(theta)
             dh_dt = 0
-            h_work, grad_h_work = self.workspace_calc(self.sigmoid_a, self.sigmoid_b, self.sigmoid_c, theta)
-
-            h_composite = h_obs + h_work
-            grad_h = grad_h_obs + grad_h_work
+            h_composite = h_obs
+            grad_h = grad_h_obs
             self.h_comp_static = h_composite
 
-            # print("h static_obstacle:", h_obs)
-            # print("h workspace:", h_work)
-            # print("static obstacle grad:", grad_h_obs)
-            # print("workspace grad:", grad_h_work)
-            # print("h static comp:", h_composite)
         elif mode == 1:
             h_obs, grad_h_obs, dh_dt = self.moving_obs_calc(theta)
-            h_work, grad_h_work = self.workspace_calc(self.sigmoid_a, self.sigmoid_b, self.sigmoid_c, theta)
-
-            h_composite = h_obs + h_work
-            grad_h = grad_h_obs + grad_h_work
+            h_composite = h_obs
+            grad_h = grad_h_obs
             self.h_comp_moving = h_composite
 
-            # print("h_moving_obstacle:", h_obs)
-            # print("moving obstacle grad:", grad_h_obs)
-            # print("h moving comp:", h_composite)
+        elif mode == 2:
+            h_task, grad_h_task = self.workspace_calc(theta)
+            dh_dt = 0
+            h_composite = h_task
+            grad_h = grad_h_task
+            self.h_comp_static = h_composite
 
         return h_composite, grad_h, dh_dt
     
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
+
+        _, _ = self.workspace_calc(theta)
 
         if self.target_status:
             print("Target Acquired")
@@ -241,14 +231,121 @@ class controlBarrierFunction():
                         [self.alpha_moving * h_comp_moving + h_dot_moving]])
             lb = 1.0 * np.array([-1,-1,-1, 0, 0])
             ub = 1.0 * np.array([1, 1, 1, 10, 10])
-            # print("Gu <", h)
             solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
 
             u = np.round(solution[:3], 2)
             self.static_slack = solution[3]
             self.moving_slack = solution[4]
-            # print("==================================================================")
+
+        return u, self.static_slack, self.moving_slack
+    
+    # def qp_filter_expanded(self, u_d, theta):
+    #     '''u_d is the policy output command (3,)'''
+
+    #     if self.target_status:
+    #         print("Target Acquired")
+    #         u = np.zeros(3)
+    #         self.static_slack = 0
+    #         self.moving_slack
+    #     else:
+    #         h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
+    #         h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
+    #         h_grad_static = np.concatenate((h_grad_static, [1], [0]))
+    #         h_grad_moving = np.concatenate((h_grad_moving, [0], [1]))
+
+    #         h_comp_static += 0.2
+            
+    #         # QP solver parameters
+    #         P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving])
+    #         q = -P @ np.concatenate((u_d, [0.0], [0.0]))
+    #         G = -np.vstack((h_grad_static, h_grad_moving))
+    #         h = np.array([[self.alpha_static * h_comp_static + h_dot_static],
+    #                     [self.alpha_moving * h_comp_moving + h_dot_moving]])
+    #         lb = 1.0 * np.array([-1,-1,-1, 0, 0])
+    #         ub = 1.0 * np.array([1, 1, 1, 10, 10])
+    #         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
+
+    #         u = np.round(solution[:3], 2)
+    #         self.static_slack = solution[3]
+    #         self.moving_slack = solution[4]
+
+    #     return u, self.static_slack, self.moving_slack
+    
+    def qp_filter_expanded(self, u_d, theta):
+        '''u_d is the policy output command (3,)'''
+
+        _, _ = self.workspace_calc(theta)
+
+        if self.target_status:
+            print("Target Acquired")
+            u = np.zeros(3)
+            self.static_slack = 0
+            self.moving_slack = 0
+        else:
+            h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
+            h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
+            h_grad_static = np.concatenate((h_grad_static, [1], [0]))
+            h_grad_moving = np.concatenate((h_grad_moving, [0], [1]))
+
+            # obstacle front face exclusion
+            obs_front_x = 2.7
+            obs_front_x_robot = obs_front_x - self.data.qpos[0]
+            rotated_target = self.rotated_target  # use cached value from workspace_calc
+            
+            if rotated_target[0] > obs_front_x_robot:
+                # target is behind obstacle face — force unsafe, obstacle avoidance only
+                h_comp_static = h_comp_static  # no expansion
+            else:
+                # target is in valid workspace — apply safe set expansion
+                print("Switched")
+                h_comp_static += 0.2
+
+            # QP solver parameters
+            P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving])
+            q = -P @ np.concatenate((u_d, [0.0], [0.0]))
+            G = -np.vstack((h_grad_static, h_grad_moving))
+            h = np.array([[self.alpha_static * h_comp_static + h_dot_static],
+                        [self.alpha_moving * h_comp_moving + h_dot_moving]])
+            lb = 1.0 * np.array([-1, -1, -1, 0, 0])
+            ub = 1.0 * np.array([1, 1, 1, 10, 10])
+            solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
+            u = np.round(solution[:3], 2)
+            self.static_slack = solution[3]
+            self.moving_slack = solution[4]
 
         return u, self.static_slack, self.moving_slack
 
-        
+    def qp_filter_task(self, u_d, theta):
+        '''u_d is the policy output command (3,)'''
+
+        if self.target_status:
+            print("Target Acquired")
+            u = np.zeros(3)
+            self.static_slack = 0
+            self.moving_slack
+        else:
+            h_task, h_grad_task, h_dot_task = self.composite_calc(theta, 2)
+            h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
+            h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
+            h_grad_task = np.concatenate((h_grad_task, [1], [0], [0]))
+            h_grad_moving = np.concatenate((h_grad_moving, [0], [1], [0]))
+            h_grad_static = np.concatenate((h_grad_static, [0], [0], [1]))
+            
+            h_comp_moving += 0.5
+            # QP solver parameters
+            P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving, self.slack_static])
+            q = -P @ np.concatenate((u_d, [0.0], [0.0], [0.0]))
+            G = -np.vstack((h_grad_task, h_grad_moving, h_grad_static))
+            h = np.array([[0.3 * h_task + h_dot_task],
+                        [self.alpha_moving * h_comp_moving + h_dot_moving],
+                        [0.5 * h_comp_static + h_dot_static]])
+            lb = 1.0 * np.array([-1,-1,-1, 0, 0, 0])
+            ub = 1.0 * np.array([1, 1, 1, 10, 10, 10])
+            solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
+
+            u = np.round(solution[:3], 2)
+            self.task_slack = solution[3]
+            self.moving_slack = solution[4]
+            self.static_slack = solution[5]
+
+        return u, self.static_slack, self.moving_slack
