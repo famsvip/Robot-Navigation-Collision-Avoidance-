@@ -7,8 +7,13 @@ moving_obs_pos: [8.0, 5.0, 0.1]
 
 moving_obs_cmd: [0.0, 0.0, 0.0]
 
+# Sigmoid goal term parameters
+sigmoid_a: 0.2
+sigmoid_b: 2.0
+sigmoid_c: 0.5
+
 # CBF inequality parameters
-alpha_static: 0.05
+alpha_static: 0.2
 alpha_moving: 0.2
 
 # QP weight
@@ -19,7 +24,7 @@ slack_static_weight: 1000000.0
 slack_moving_weight: 1000.0
 
 # save_path
-pos_path: "./data/switching_CBF/switching_pos"
-cmd_path: "./data/switching_CBF/switching_cmds"
-val_path: "./data/switching_CBF/switching_vals"
-col_path: "./data/switching_CBF/switching_col"
+pos_path: "./data/composite_CBF/composite_pos_scenario1"
+cmd_path: "./data/composite_CBF/composite_cmds_scenario1"
+val_path: "./data/composite_CBF/composite_vals_scenario1"
+col_path: "./data/composite_CBF/composite_col_scenario1"

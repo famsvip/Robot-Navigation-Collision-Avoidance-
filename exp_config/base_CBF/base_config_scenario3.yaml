@@ -1,0 +1,25 @@
+# Maintain data type for xml and calculations
+
+robot_pos: [1.0, 0.0, 0.793]
+target_pos: "2.8 0.0 0.8"
+shelf_pos: "3.0 0.0 0.35"
+moving_obs_pos: [1.5, -3.0, 0.0]
+moving_obs_cmd: [0.0, 1.0, 0.0]
+
+# CBF inequality parameters
+alpha_static: 0.2
+alpha_moving: 0.2
+
+# QP weight
+x_weight: 1.0
+y_weight: 1.0
+theta_weight: 0.1
+slack_static_weight: 1000000.0
+slack_moving_weight: 1000.0
+slack_workspace_weight: 10.0
+
+# save_path
+pos_path: "./data/base_CBF/base_pos_scenario3"
+cmd_path: "./data/base_CBF/base_cmds_scenario3"
+val_path: "./data/base_CBF/base_vals_scenario3"
+col_path: "./data/base_CBF/base_col_scenario3"
