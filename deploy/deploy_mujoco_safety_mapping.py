@@ -122,11 +122,11 @@ if __name__ == "__main__":
             start = time.time()
             buffer_index = 0
             while viewer.is_running() and time.time() - start < simulation_duration:
-                for x in np.arange(start=0, stop=4, step=0.01):
-                    for y in np.arange(start=-1, stop=1, step=0.01):
+                for x in np.arange(start=2, stop=4, step=0.01):
+                    for y in np.arange(start=-2, stop=2, step=0.01):
                         mujoco.mj_resetData(m, d)
                         d.qpos[19:22] = [8.0, 5.0, 0.0]
-                        d.qpos[:2] = [0,0]
+                        d.qpos[:2] = [x,y]
                         mujoco.mj_step(m, d)
                         h_comp, _, _ = cbf.composite_calc(0,0)
                         h_obs, _ = cbf.static_obs_calc(0)
@@ -142,7 +142,7 @@ if __name__ == "__main__":
                         if counter < max_recorded_step:
                             root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
                             
-                        counter += 1
+                        counter = 0
                         if counter % control_decimation == 0:
                             # Get current cmd value (thread-safe)
                             with cmd_lock:
@@ -152,19 +152,9 @@ if __name__ == "__main__":
                             modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
                             if counter < max_recorded_step:
                                 mod_cmds.append(modified_cmd)
-                                constraint_values.append([cbf.h_static_obs, cbf.h_workspace, np.linalg.norm(cbf.grad_h_static_obs), np.linalg.norm(cbf.grad_h_workspace), cbf.static_slack])
-                                contact_check(m, d, obs_frc)
-
-                            # print("Simulation count:", counter, "|| original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
-                            # print("static slack:", static_slack)
-                            # print("moving slack:", moving_slack)
-                            # print("static h:", cbf.h_static_obs)
-                            # print("workspace h:", cbf.h_workspace)
-                            print("composite h:", cbf.h_static_obs + cbf.h_workspace, h_comp)
+                            print("composite h:", h_comp)
                             print(h_obs)
-                            # print("grad static h:", cbf.grad_h_static_obs)
-                            # print("grad workspace h:", cbf.grad_h_workspace)
-                            # print("grad composite h:", cbf.grad_h_static_obs + cbf.grad_h_moving_obs)
+                            print(d.qpos[:2])
 
                             # Create observation
                             qj = d.qpos[7:19]
@@ -215,7 +205,7 @@ if __name__ == "__main__":
         # np.save(cbf.cmd_path, np.array(mod_cmds))
         # np.save(cbf.val_path, np.array([constraint_values]))
         # np.save(cbf.col_path, np.array(obs_frc))
-        # np.save("./data/safety_map_comp", np.array(safety_map_comp))
-        # np.save("./data/safety_map_obs", np.array(safety_map_obs))
+        np.save("./data/safety_map_comp_2", np.array(safety_map_comp))
+        np.save("./data/safety_map_obs_2", np.array(safety_map_obs))
         print("Data saved")
         # print(cbf.target_status)
