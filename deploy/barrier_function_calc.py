@@ -33,6 +33,7 @@ class controlBarrierFunction():
         self.pos_path = exp_config["pos_path"]
         self.cmd_path = exp_config["cmd_path"]
         self.col_path = exp_config["col_path"]
+        self.val_path = exp_config["val_path"]
 
         # xml modifications and data extraction
         tree = ET.parse(xml_path)

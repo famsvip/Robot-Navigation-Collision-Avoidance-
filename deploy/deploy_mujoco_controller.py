@@ -256,5 +256,6 @@ if __name__ == "__main__":
         np.save(cbf.pos_path, np.array(root_pos))
         np.save(cbf.cmd_path, np.array(mod_cmds))
         np.save(cbf.col_path, np.array(obs_frc))
+        np.save(cbf.val_path, np.array(constraint_values))
         print("Data saved")
         print(cbf.target_status)
