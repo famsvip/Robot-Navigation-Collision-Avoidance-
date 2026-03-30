@@ -168,7 +168,7 @@ if __name__ == "__main__":
     mod_cmds = []
     obs_frc = []
     constraint_values = []
-    max_recorded_step = 1e4
+    max_recorded_step = 2500
 
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
@@ -194,7 +194,7 @@ if __name__ == "__main__":
                     mod_cmds.append(modified_cmd)
                     print(d.qvel[:2])
                     terminal_vel = np.linalg.norm(d.qvel[:2])
-                    constraint_values.append([cbf.h_static_obs, cbf.h_static_obs, cbf.h_workspace, np.linalg.norm(cbf.grad_h_static_obs), 0, static_slack, terminal_vel])
+                    constraint_values.append([cbf.h_static_obs, cbf.h_static_obs, cbf.h_moving_obs, np.linalg.norm(cbf.grad_h_static_obs), moving_slack, static_slack, terminal_vel])
                     contact_check(m, d, obs_frc)
                     print("Recording")
 
