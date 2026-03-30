@@ -126,7 +126,7 @@ if __name__ == "__main__":
                     for y in np.arange(start=-2, stop=2, step=0.01):
                         mujoco.mj_resetData(m, d)
                         d.qpos[19:22] = [8.0, 5.0, 0.0]
-                        d.qpos[:2] = [x,y]
+                        d.qpos[:2] = [0,0]
                         mujoco.mj_step(m, d)
                         h_comp, _, _ = cbf.composite_calc(0,0)
                         h_obs, _ = cbf.static_obs_calc(0)
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         # np.save(cbf.cmd_path, np.array(mod_cmds))
         # np.save(cbf.val_path, np.array([constraint_values]))
         # np.save(cbf.col_path, np.array(obs_frc))
-        np.save("./data/safety_map_comp_2", np.array(safety_map_comp))
-        np.save("./data/safety_map_obs_2", np.array(safety_map_obs))
+        # np.save("./data/safety_map_comp_2", np.array(safety_map_comp))
+        # np.save("./data/safety_map_obs_2", np.array(safety_map_obs))
         print("Data saved")
         # print(cbf.target_status)
