@@ -168,7 +168,7 @@ if __name__ == "__main__":
     mod_cmds = []
     obs_frc = []
     constraint_values = []
-    max_recorded_step = 1e4
+    max_recorded_step = 2500
 
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
