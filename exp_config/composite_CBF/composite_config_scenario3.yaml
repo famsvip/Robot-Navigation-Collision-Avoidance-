@@ -14,7 +14,7 @@ sigmoid_c: 0.5
 
 # CBF-CLF inequality parameters
 alpha_static: 0.2
-alpha_moving: 0.2
+alpha_moving: 0.1
 
 # QP weight
 x_weight: 1.0
