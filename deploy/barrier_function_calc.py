@@ -180,9 +180,20 @@ class controlBarrierFunction():
             self.target_status = True
 
         return self.h_workspace, self.grad_h_workspace
+
+    def perpendicular_dir(self, u_d):
+        u_d = np.reshape(u_d, (3,1))
+        nom_hat = u_d/np.linalg.norm(u_d)
+        R_perpen = np.eye(3) - nom_hat @ nom_hat.T
+
+        return R_perpen
     
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
+        lam = 1.0
+        R = self.perpendicular_dir(u_d)
+        R_perpen = np.eye(5)
+        R_perpen[:3,:3] = R
 
         h_static, grad_h_static = self.static_obs_calc(theta)
         h_moving, grad_h_moving, dh_dt = self.moving_obs_calc(theta)
@@ -192,13 +203,15 @@ class controlBarrierFunction():
         # QP solver parameters
         P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving])
         q = -P @ np.concatenate((u_d, [0.0], [0.0]))
+        # include perpendicular penalty
+        P_expanded = P + lam * R_perpen 
         G = np.vstack((-grad_h_static, -grad_h_moving))
         h = np.array([[self.alpha_static * h_static],
                       [self.alpha_moving * h_moving + dh_dt]])
         lb = 1.0 * np.array([-1,-1,-1, 0, 0])
         ub = 1.0 * np.array([1, 1, 1, 10, 10])
         # print("Gu <", h)
-        solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
+        solution = solve_qp(P_expanded, q, G, h, ub=ub, lb=lb, solver="cvxopt")
         u = np.round(solution[:3], 2)
         static_slack = solution[3]
         moving_slack = solution[4]
