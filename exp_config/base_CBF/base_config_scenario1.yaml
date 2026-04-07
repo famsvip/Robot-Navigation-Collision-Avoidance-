@@ -11,8 +11,10 @@ alpha_static: 0.05
 alpha_moving: 0.2
 
 # QP weight
+# x_weight: 1.0
+# y_weight: 1.0
 x_weight: 1.0
-y_weight: 1.0
+y_weight: 100.0
 theta_weight: 0.1
 slack_static_weight: 1000000.0
 slack_moving_weight: 1000.0
