@@ -199,7 +199,10 @@ class controlBarrierFunction():
         ub = 1.0 * np.array([1, 1, 1, 10, 10])
         # print("Gu <", h)
         solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
-        u = np.round(solution[:3], 2)
+        # Floor to the third decimal
+        u = solution[:3]
+        print("no floor:", u)
+        u = np.trunc(u * 100) / 100
         static_slack = solution[3]
         moving_slack = solution[4]
 
