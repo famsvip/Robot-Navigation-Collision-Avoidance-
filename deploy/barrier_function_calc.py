@@ -190,7 +190,7 @@ class controlBarrierFunction():
     
     def qp_filter(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
-        lam = 1.0
+        lam = 100.0
         R = self.perpendicular_dir(u_d)
         R_perpen = np.eye(5)
         R_perpen[:3,:3] = R
