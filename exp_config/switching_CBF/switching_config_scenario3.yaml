@@ -9,7 +9,7 @@ moving_obs_cmd: [0.0, 1.0, 0.0]
 
 # CBF-CLF inequality parameters
 alpha_static: 0.2
-alpha_moving: 0.2
+alpha_moving: 0.1
 
 # QP weight
 x_weight: 1.0
