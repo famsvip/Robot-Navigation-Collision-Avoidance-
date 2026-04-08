@@ -168,7 +168,7 @@ if __name__ == "__main__":
     mod_cmds = []
     obs_frc = []
     constraint_values = []
-    max_recorded_step = 2500
+    max_recorded_step = cbf.max_time
 
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:

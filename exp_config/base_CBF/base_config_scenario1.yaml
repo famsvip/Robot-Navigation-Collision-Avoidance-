@@ -1,5 +1,9 @@
 # Maintain data type for xml and calculations
 
+# Recording time
+max_time: 10000
+
+# Position
 robot_pos: [0.0, 0.0, 0.793]
 target_pos: "2.75 0.0 0.8"
 shelf_pos: "3.0 0.0 0.35"
@@ -14,7 +18,7 @@ alpha_moving: 0.2
 # x_weight: 1.0
 # y_weight: 1.0
 x_weight: 1.0
-y_weight: 100.0
+y_weight: 100000.0
 theta_weight: 0.1
 slack_static_weight: 1000000.0
 slack_moving_weight: 1000.0
