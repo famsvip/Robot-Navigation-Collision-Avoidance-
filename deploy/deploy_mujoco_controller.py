@@ -167,8 +167,7 @@ if __name__ == "__main__":
     mod_cmds = []
     obs_frc = []
     constraint_values = []
-    max_recorded_step = 2500
-
+    max_recorded_step = cbf.max_time
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
 
@@ -191,7 +190,7 @@ if __name__ == "__main__":
                 if cbf.workspace_target_distance < 1.0:
                     print("Switched")
                     modified_cmd, static_slack, moving_slack = cbf.qp_filter_task(current_cmd, yaw_angle)
-                if counter < max_recorded_step and cbf.target_status != True:
+                if counter < max_recorded_step and cbf.target_status != True and not np.all(np.equal(modified_cmd, np.zeros(3))):
                     root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
                     mod_cmds.append(modified_cmd)
                     print(d.qvel[:2])
