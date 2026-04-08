@@ -16,6 +16,7 @@ class controlBarrierFunction():
     ):
 
         # experiment configuration parameters
+        self.max_time = exp_config["max_time"]
         robot_pos = exp_config["robot_pos"]
         target_body_origin = exp_config["target_pos"]
         shelf_pos = exp_config["shelf_pos"]
@@ -243,11 +244,12 @@ class controlBarrierFunction():
             ub = 1.0 * np.array([1, 1, 1, 10, 10])
             # print("Gu <", h)
             solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
-
-            u = np.round(solution[:3], 2)
+            # Floor to the third decimal
+            u = solution[:3]
+            print("no floor:", u)
+            u = np.trunc(u * 100) / 100
             self.static_slack = solution[3]
             self.moving_slack = solution[4]
-            # print("==================================================================")
 
         return u, self.static_slack, self.moving_slack
 
