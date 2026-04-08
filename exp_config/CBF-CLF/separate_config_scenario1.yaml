@@ -1,5 +1,9 @@
 # Maintain data type for xml and calculations
 
+# Recording time
+max_time: 10000
+
+# Position
 robot_pos: [0.0, 0.0, 0.793]
 target_pos: "2.75 0.0 0.8"
 shelf_pos: "3.0 0.0 0.35"

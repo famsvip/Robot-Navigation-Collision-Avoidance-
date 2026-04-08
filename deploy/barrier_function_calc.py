@@ -210,6 +210,7 @@ class controlBarrierFunction():
         u = np.trunc(u * 100) / 100
         self.static_slack = solution[3]
         self.moving_slack = solution[4]
+        self.workspace_slack = solution[5]
 
         return u, self.static_slack, self.moving_slack, self.workspace_slack
 
