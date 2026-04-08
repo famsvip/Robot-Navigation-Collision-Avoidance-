@@ -187,15 +187,17 @@ if __name__ == "__main__":
                     current_cmd = [1.0, 0.0, 0.0]
 
                 modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
+                task_slack = 0.0
                 if cbf.workspace_target_distance < 1.0:
                     print("Switched")
-                    modified_cmd, static_slack, moving_slack = cbf.qp_filter_task(current_cmd, yaw_angle)
+                    modified_cmd, static_slack, moving_slack, task_slack = cbf.qp_filter_task(current_cmd, yaw_angle)
+                    print("task_slack:", task_slack)
                 if counter < max_recorded_step and cbf.target_status != True and not np.all(np.equal(modified_cmd, np.zeros(3))):
                     root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
                     mod_cmds.append(modified_cmd)
                     print(d.qvel[:2])
                     terminal_vel = np.linalg.norm(d.qvel[:2])
-                    constraint_values.append([cbf.h_static_obs, cbf.h_static_obs, cbf.h_moving_obs, np.linalg.norm(cbf.grad_h_static_obs), moving_slack, static_slack, terminal_vel])
+                    constraint_values.append([cbf.h_static_obs, task_slack, cbf.h_moving_obs, np.linalg.norm(cbf.grad_h_static_obs), moving_slack, static_slack, terminal_vel])
                     contact_check(m, d, obs_frc)
                     print("Recording")
 

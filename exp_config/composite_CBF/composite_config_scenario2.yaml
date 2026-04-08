@@ -17,11 +17,11 @@ sigmoid_c: 0.5
 
 # CBF inequality parameters
 alpha_static: 0.1
-alpha_moving: 0.2
+alpha_moving: 0.1
 
 # QP weight
 x_weight: 1.0
-y_weight: 100.0
+y_weight: 100000.0
 theta_weight: 0.1
 slack_static_weight: 1000000.0
 slack_moving_weight: 1000000.0
