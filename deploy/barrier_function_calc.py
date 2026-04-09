@@ -209,10 +209,10 @@ class controlBarrierFunction():
         # print("no floor:", u)
         # u = np.trunc(u * 100) / 100
         u = np.round(solution[:3], 2)
-        self.static_slack = solution[3]
-        self.moving_slack = solution[4]
-        self.workspace_slack = solution[5]
+        static_slack = solution[3]
+        moving_slack = solution[4]
+        workspace_slack = solution[5]
 
-        return u, self.static_slack, self.moving_slack, self.workspace_slack
+        return u, static_slack, moving_slack, workspace_slack
 
         
