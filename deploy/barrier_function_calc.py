@@ -676,6 +676,7 @@ class switching_CBF():
     ):
 
         # experiment configuration parameters
+        self.max_time = exp_config["max_time"]
         robot_pos = exp_config["robot_pos"]
         target_body_origin = exp_config["target_pos"]
         shelf_pos = exp_config["shelf_pos"]
@@ -683,11 +684,13 @@ class switching_CBF():
         self.moving_obs_cmd = np.array(exp_config["moving_obs_cmd"])
         self.alpha_static = exp_config["alpha_static"]
         self.alpha_moving = exp_config["alpha_moving"]
+        self.alpha_task = exp_config["alpha_task"]
         self.x_weight = exp_config["x_weight"]
         self.y_weight = exp_config["y_weight"]
         self.theta_weight = exp_config["theta_weight"]
         self.slack_static = exp_config["slack_static_weight"]
         self.slack_moving = exp_config["slack_moving_weight"]
+        self.slack_task = exp_config["slack_task_weight"]
         # data storage paths
         self.pos_path = exp_config["pos_path"]
         self.cmd_path = exp_config["cmd_path"]
@@ -875,8 +878,8 @@ class switching_CBF():
         if self.target_status:
             print("Target Acquired")
             u = np.zeros(3)
-            self.static_slack = 0
-            self.moving_slack
+            static_slack = 0
+            moving_slack = 0
         else:
             h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
             h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
@@ -894,63 +897,19 @@ class switching_CBF():
             solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
 
             u = np.round(solution[:3], 2)
-            self.static_slack = solution[3]
-            self.moving_slack = solution[4]
+            static_slack = solution[3]
+            moving_slack = solution[4]
 
-        return u, self.static_slack, self.moving_slack
-    
-    def qp_filter_expanded(self, u_d, theta):
-        '''u_d is the policy output command (3,)'''
-
-        _, _ = self.workspace_calc(theta)
-
-        if self.target_status:
-            print("Target Acquired")
-            u = np.zeros(3)
-            self.static_slack = 0
-            self.moving_slack = 0
-        else:
-            h_comp_static, h_grad_static, h_dot_static = self.composite_calc(theta, 0)
-            h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
-            h_grad_static = np.concatenate((h_grad_static, [1], [0]))
-            h_grad_moving = np.concatenate((h_grad_moving, [0], [1]))
-
-            # obstacle front face exclusion
-            obs_front_x = 2.7
-            obs_front_x_robot = obs_front_x - self.data.qpos[0]
-            rotated_target = self.rotated_target  # use cached value from workspace_calc
-            
-            if rotated_target[0] > obs_front_x_robot:
-                # target is behind obstacle face — force unsafe, obstacle avoidance only
-                h_comp_static = h_comp_static  # no expansion
-            else:
-                # target is in valid workspace — apply safe set expansion
-                print("Switched")
-                h_comp_static += 0.2
-
-            # QP solver parameters
-            P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving])
-            q = -P @ np.concatenate((u_d, [0.0], [0.0]))
-            G = -np.vstack((h_grad_static, h_grad_moving))
-            h = np.array([[self.alpha_static * h_comp_static + h_dot_static],
-                        [self.alpha_moving * h_comp_moving + h_dot_moving]])
-            lb = 1.0 * np.array([-1, -1, -1, 0, 0])
-            ub = 1.0 * np.array([1, 1, 1, 10, 10])
-            solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
-            u = np.round(solution[:3], 2)
-            self.static_slack = solution[3]
-            self.moving_slack = solution[4]
-
-        return u, self.static_slack, self.moving_slack
+        return u, static_slack, moving_slack
 
     def qp_filter_task(self, u_d, theta):
         '''u_d is the policy output command (3,)'''
 
+        _, _ = self.workspace_calc(theta)
+        
         if self.target_status:
             print("Target Acquired")
             u = np.zeros(3)
-            self.static_slack = 0
-            self.moving_slack
         else:
             h_task, h_grad_task, h_dot_task = self.composite_calc(theta, 2)
             h_comp_moving, h_grad_moving, h_dot_moving = self.composite_calc(theta, 1)
@@ -959,21 +918,23 @@ class switching_CBF():
             h_grad_moving = np.concatenate((h_grad_moving, [0], [1], [0]))
             h_grad_static = np.concatenate((h_grad_static, [0], [0], [1]))
             
-            h_comp_moving += 0.5
+            h_comp_static += 0.0
             # QP solver parameters
-            P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving, self.slack_static])
+            P = np.diag([self.x_weight, self.y_weight, self.theta_weight, self.slack_static, self.slack_moving, self.slack_task])
             q = -P @ np.concatenate((u_d, [0.0], [0.0], [0.0]))
-            G = -np.vstack((h_grad_task, h_grad_moving, h_grad_static))
-            h = np.array([[0.3 * h_task + h_dot_task],
+            G = -np.vstack((h_grad_static, h_grad_moving, h_grad_task))
+            h = np.array([[self.alpha_static * h_comp_static + h_dot_static],
                         [self.alpha_moving * h_comp_moving + h_dot_moving],
-                        [0.5 * h_comp_static + h_dot_static]])
+                        [self.alpha_task* h_task + h_dot_task]])
             lb = 1.0 * np.array([-1,-1,-1, 0, 0, 0])
             ub = 1.0 * np.array([1, 1, 1, 10, 10, 10])
             solution = solve_qp(P, q, G, h, ub=ub, lb=lb, solver="cvxopt")
-
             u = np.round(solution[:3], 2)
-            self.task_slack = solution[3]
-            self.moving_slack = solution[4]
-            self.static_slack = solution[5]
+            # u = solution[:3]
+            # print("no floor:", u)
+            # u = np.trunc(u * 100) / 100
+            static_slack = solution[3]
+            moving_slack = solution[4]
+            task_slack = solution[5]
 
-        return u, self.static_slack, self.moving_slack
+        return u, static_slack, moving_slack, task_slack
