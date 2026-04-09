@@ -6,7 +6,7 @@ import torch
 import yaml
 import threading
 from pynput import keyboard
-from barrier_function_calc import controlBarrierFunction
+from barrier_function_calc import CBF_CLF
 
 def get_gravity_orientation(quaternion):
     qw = quaternion[0]
@@ -47,18 +47,8 @@ def contact_check(m, d, obs_frc):
             obs_frc.append(np.linalg.norm(force[:3]))
         
         print("Shelf contact detected")
-        print("obs_frc:", obs_frc)  # force[:3] = force, force[3:] = torque
+        print("obs_frc:", obs_frc)
     return None
-
-# def contact_check(m, d, obs_frc):
-#     contact_indices = np.argwhere(d.contact.geom1==4)
-#     if contact_indices.size != 0:
-#             obs_frc_address = [d.contact.efc_address[i] for i in contact_indices]
-#             for address in obs_frc_address:
-#                 obs_frc.append(d.efc_force[address:])
-#             print("Shelf contact detected")
-#             print(obs_frc)
-#     return None
 
 # Global command variable
 cmd = None
@@ -108,6 +98,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("exp_config", type=str, help="config file name in the config folder")
+    parser.add_argument("--plot", action="store_true", default=False, help="turn on or off plotting")
     args = parser.parse_args()
     exp_config_file = args.exp_config
     
@@ -160,7 +151,7 @@ if __name__ == "__main__":
     # Load qp filter
     with open(f"./exp_config/{exp_config_file}", "r") as f:
         exp_config = yaml.load(f, Loader=yaml.FullLoader)
-        cbf = controlBarrierFunction(xml_path, exp_config)
+        cbf = CBF_CLF(xml_path, exp_config)
     moving_obs_cmd = cbf.moving_obs_cmd
 
     # Load robot model
@@ -181,9 +172,7 @@ if __name__ == "__main__":
 
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
-            # start position and orientation
-            # d.qpos[:2] = [4.0, 0]
-
+            
             start = time.time()
             buffer_index = 0
             while viewer.is_running() and time.time() - start < simulation_duration:
@@ -199,26 +188,24 @@ if __name__ == "__main__":
                     current_cmd = cmd.copy()
                     current_cmd = [1.0, 0.0, 0.0]
 
-                modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
+                modified_cmd, static_slack, moving_slack, warehouse_slack = cbf.qp_filter(current_cmd, yaw_angle)
                 if counter < max_recorded_step and cbf.target_status != True and not np.all(np.equal(modified_cmd, np.zeros(3))):
                     root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
                     mod_cmds.append(modified_cmd)
                     print(d.qvel[:2])
                     terminal_vel = np.linalg.norm(d.qvel[:2])
-                    constraint_values.append([cbf.h_comp_static, cbf.h_static_obs, cbf.h_comp_moving, np.linalg.norm(cbf.grad_h_static_obs), moving_slack, cbf.static_slack, terminal_vel])
+                    constraint_values.append([cbf.h_static_obs, cbf.h_static_obs, cbf.h_moving_obs, np.linalg.norm(cbf.grad_h_static_obs), moving_slack, static_slack, terminal_vel])
                     contact_check(m, d, obs_frc)
                     print("Recording")
 
                 print("Simulation count:", counter, "|| original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
-                print("composite h:", cbf.h_comp_static)
                 print("static h:", cbf.h_static_obs)
                 print("static slack:", static_slack)
-                print("moving h:", cbf.h_comp_moving)
                 print("grad_h_static:", cbf.grad_h_static_obs)
-
+              
                 counter += 1
                 if counter % control_decimation == 0:
-
+                    
                     # Create observation
                     qj = d.qpos[7:19]
                     dqj = d.qvel[6:18]
@@ -268,7 +255,7 @@ if __name__ == "__main__":
         print("Keyboard listener stopped")
         np.save(cbf.pos_path, np.array(root_pos))
         np.save(cbf.cmd_path, np.array(mod_cmds))
-        np.save(cbf.val_path, np.array([constraint_values]))
         np.save(cbf.col_path, np.array(obs_frc))
+        np.save(cbf.val_path, np.array(constraint_values))
         print("Data saved")
         print(cbf.target_status)
