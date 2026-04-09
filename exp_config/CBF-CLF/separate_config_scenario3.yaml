@@ -24,7 +24,7 @@ slack_moving_weight: 1000000.0
 slack_workspace_weight: 200.0
 
 # save_path
-pos_path: "./data/CBF-CLF/separated_pos_scenario3"
-cmd_path: "./data/CBF-CLF/separated_cmds_scenario3"
-val_path: "./data/CBF-CLF/separated_vals_scenario3"
-col_path: "./data/CBF-CLF/separated_col_scenario3"
+pos_path: "./data/CBF-CLF/separated_pos_scenario3_2"
+cmd_path: "./data/CBF-CLF/separated_cmds_scenario3_2"
+val_path: "./data/CBF-CLF/separated_vals_scenario3_2"
+col_path: "./data/CBF-CLF/separated_col_scenario3_2"
