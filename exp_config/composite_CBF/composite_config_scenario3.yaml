@@ -5,6 +5,8 @@ max_time: 2500
 
 # Position
 robot_pos: [1.0, 0.0, 0.793]
+robot_orient: [0.0, 0.0, 0.0, 0.0]
+robot_cmd: [1.0, 0.0, 0.0]
 target_pos: "2.8 0.0 0.8"
 shelf_pos: "3.0 0.0 0.35"
 moving_obs_pos: [1.5, -3.0, 0.0]

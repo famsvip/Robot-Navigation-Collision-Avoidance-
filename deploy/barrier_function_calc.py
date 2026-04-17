@@ -18,6 +18,8 @@ class composite_CBF():
         # experiment configuration parameters
         self.max_time = exp_config["max_time"]
         robot_pos = exp_config["robot_pos"]
+        robot_orient = exp_config["robot_orient"]
+        self.robot_cmd = exp_config["robot_cmd"]
         target_body_origin = exp_config["target_pos"]
         shelf_pos = exp_config["shelf_pos"]
         moving_obs_pos = exp_config["moving_obs_pos"]
@@ -58,6 +60,7 @@ class composite_CBF():
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
         self.data.qpos[:3] = robot_pos
+        self.data.qpos[3:7] = robot_orient
         self.data.qpos[19:22] = moving_obs_pos  
 
         # represent target as a bounding box and express center in world coordinates

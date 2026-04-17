@@ -50,6 +50,14 @@ def contact_check(m, d, obs_frc):
         print("obs_frc:", obs_frc)  # force[:3] = force, force[3:] = torque
     return None
 
+def target_alignment(d, cbf):
+    psi = root_yaw(d.qpos[3:7])
+    rob_vec = np.array([np.cos(psi), np.sin(psi), 0])
+    target_vec = cbf.target_pos - d.qpos[:3]
+    target_vec[2] = 0.0
+    alignment_score = rob_vec @ target_vec
+    return alignment_score
+
 # Global command variable
 cmd = None
 cmd_lock = threading.Lock()
@@ -133,6 +141,11 @@ if __name__ == "__main__":
                     current_cmd = cmd.copy()
                     current_cmd = cbf.robot_cmd
 
+                alignment_score = target_alignment(d, cbf)
+                print("Alignment:", alignment_score)
+                if alignment_score >= 0.98:
+                    cbf.y_weight = 0.0
+                    #current_cmd = np.array([1.0, 0.0, 0.0])
                 modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
                 if recording:
                     if counter >= max_recorded_step or cbf.target_status == True or np.all(np.equal(modified_cmd, np.zeros(3))):

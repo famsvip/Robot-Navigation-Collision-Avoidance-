@@ -6,7 +6,7 @@ import torch
 import yaml
 import threading
 from pynput import keyboard
-from barrier_function_calc import composite_CBF
+from barrier_function_calc import controlBarrierFunction
 
 def get_gravity_orientation(quaternion):
     qw = quaternion[0]
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     # Load qp filter
     with open(f"./exp_config/{exp_config_file}", "r") as f:
         exp_config = yaml.load(f, Loader=yaml.FullLoader)
-        cbf = composite_CBF(xml_path, exp_config)
+        cbf = controlBarrierFunction(xml_path, exp_config)
     moving_obs_cmd = cbf.moving_obs_cmd
 
     # Load robot model
@@ -112,11 +112,12 @@ if __name__ == "__main__":
     mod_cmds = []
     obs_frc = []
     constraint_values = []
-    max_recorded_step = cbf.max_time
-    recording = True
-
+    actual = []
+    max_recorded_step = 1e4
     try:
         with mujoco.viewer.launch_passive(m, d) as viewer:
+            # start position and orientation
+            d.qpos[:2] = [10.0, 0.0]
 
             start = time.time()
             buffer_index = 0
@@ -125,38 +126,28 @@ if __name__ == "__main__":
                 tau = pd_control(target_dof_pos, d.qpos[7:19], kps, np.zeros_like(kds), d.qvel[6:18], kds)
                 d.ctrl[:] = tau
                 mujoco.mj_step(m, d)
-
-                yaw_angle = root_yaw(d.qpos[3:7])
-
-                 # Get current cmd value (thread-safe)
-                with cmd_lock:
-                    current_cmd = cmd.copy()
-                    current_cmd = cbf.robot_cmd
-
-                modified_cmd, static_slack, moving_slack = cbf.qp_filter(current_cmd, yaw_angle)
-                if recording:
-                    if counter >= max_recorded_step or cbf.target_status == True or np.all(np.equal(modified_cmd, np.zeros(3))):
-                        recording = False
-                    else:
-                        root_pos.append(np.concatenate((d.qpos[:2], [yaw_angle])))
-                        mod_cmds.append(modified_cmd)
-                        print(d.qvel[:2])
-                        terminal_vel = np.linalg.norm(d.qvel[:2])
-                        constraint_values.append([cbf.h_comp_static, cbf.h_static_obs, cbf.h_comp_moving, np.linalg.norm(cbf.grad_h_static_obs), moving_slack, cbf.static_slack, terminal_vel])
-                        contact_check(m, d, obs_frc)
-                        print("Recording")
-                else:
-                    print("Done recording")
-
-                print("Simulation count:", counter, "|| original cmd:", current_cmd, "|| modified cmd:", modified_cmd )
-                print("composite h:", cbf.h_comp_static)
-                print("static h:", cbf.h_static_obs)
-                print("static slack:", static_slack)
-                print("moving h:", cbf.h_comp_moving)
-                print("grad_h_static:", cbf.grad_h_static_obs)
-
+                    
                 counter += 1
                 if counter % control_decimation == 0:
+
+                    # Get current cmd value (thread-safe)
+                    with cmd_lock:
+                        current_cmd = cmd.copy()
+                        current_cmd = [0.0, 0.0, 1.0]
+
+                    if counter < max_recorded_step:
+                        psi = root_yaw(d.qpos[3:7])
+                        R_world_to_body = np.array([
+                                            [np.cos(psi), np.sin(psi), 0],
+                                            [-np.sin(psi), np.cos(psi), 0],
+                                            [0, 0, 1]
+                                            ])
+                        local_vel = R_world_to_body @ d.qvel[:3]
+                        val = np.concatenate([local_vel[:2], [d.qvel[5]]])
+                        actual.append(val)
+                        print("Count:", counter, "|| Nominal:", current_cmd, "Recorded:", val)
+                    else:
+                        print("Recording done")
 
                     # Create observation
                     qj = d.qpos[7:19]
@@ -177,7 +168,7 @@ if __name__ == "__main__":
 
                     obs[:3] = omega
                     obs[3:6] = gravity_orientation
-                    obs[6:9] = modified_cmd * cmd_scale
+                    obs[6:9] = current_cmd * cmd_scale
                     obs[9 : 9 + num_actions] = qj
                     obs[9 + num_actions : 9 + 2 * num_actions] = dqj
                     obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
@@ -203,9 +194,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nSimulation interrupted by user")
     finally:
-        np.save(cbf.pos_path, np.array(root_pos))
-        np.save(cbf.cmd_path, np.array(mod_cmds))
-        np.save(cbf.val_path, np.array([constraint_values]))
-        np.save(cbf.col_path, np.array(obs_frc))
+        np.save("./data/rotating_benchmark", np.array(actual))
         print("Data saved")
-        print("Target Reached:", cbf.target_status)

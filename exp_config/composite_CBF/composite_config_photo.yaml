@@ -1,15 +1,15 @@
 # Maintain data type for xml and calculations
 
 # Recording time
-max_time: 10000
+max_time: 2500
 
 # Position
-robot_pos: [0.0, 0.0, 0.793]
+robot_pos: [1.0, 0.0, 0.793]
 robot_orient: [0.0, 0.0, 0.0, 0.0]
-robot_cmd: [1.0, 0.0, 0.0]
-target_pos: "2.75 0.0 0.8"
+robot_cmd: [0.0, 0.0, 0.0]
+target_pos: "2.75 1.25 0.8"
 shelf_pos: "3.0 0.0 0.35"
-moving_obs_pos: [8.0, 5.0, 0.1]
+moving_obs_pos: [1.5, -2.0, 0.0]
 moving_obs_cmd: [0.0, 0.0, 0.0]
 
 # Sigmoid goal term parameters
@@ -29,7 +29,7 @@ slack_static_weight: 1000000.0
 slack_moving_weight: 1000000.0
 
 # save_path
-pos_path: "./data/composite_CBF/composite_pos_scenario1"
-cmd_path: "./data/composite_CBF/composite_cmds_scenario1"
-val_path: "./data/composite_CBF/composite_vals_scenario1"
-col_path: "./data/composite_CBF/composite_col_scenario1"
+pos_path: "./data/composite_CBF/composite_pos_photo"
+cmd_path: "./data/composite_CBF/composite_cmds_photo"
+val_path: "./data/composite_CBF/composite_vals_photo"
+col_path: "./data/composite_CBF/composite_col_photo"
