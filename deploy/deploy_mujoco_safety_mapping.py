@@ -201,10 +201,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nSimulation interrupted by user")
     finally:
-        # np.save(cbf.pos_path, np.array(root_pos))
-        # np.save(cbf.cmd_path, np.array(mod_cmds))
-        # np.save(cbf.val_path, np.array([constraint_values]))
-        # np.save(cbf.col_path, np.array(obs_frc))
-        np.save("./data/miscellaneous/safety_map_comp_2", np.array(safety_map_comp))
-        np.save("./data/miscellaneous/safety_map_obs_2", np.array(safety_map_obs))
+        np.save("./data/miscellaneous/safety_map_comp_expanded", np.array(safety_map_comp))
+        np.save("./data/miscellaneous/safety_map_obs_expanded", np.array(safety_map_obs))
         print("Data saved")

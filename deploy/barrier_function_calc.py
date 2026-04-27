@@ -279,7 +279,7 @@ class base_CBF():
         self.theta_weight = exp_config["theta_weight"]
         self.slack_static = exp_config["slack_static_weight"]
         self.slack_moving = exp_config["slack_moving_weight"]
-        self.slack_workspace = exp_config["slack_workspace_weight"]
+        # self.slack_workspace = exp_config["slack_workspace_weight"]
         # data save file path
         self.pos_path = exp_config["pos_path"]
         self.cmd_path = exp_config["cmd_path"]
